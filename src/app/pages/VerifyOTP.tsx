@@ -1,16 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Phone, MessageSquare } from 'lucide-react';
+import { useAuthStore } from '../store';
+import { authService } from '../services';
+import { useShallow } from 'zustand/react/shallow';
 import logoGalsen from '../images/logogalsen_invest.png';
 
 export function VerifyOTP() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const email = (location.state as { email?: string })?.email || '';
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [selectedMethod, setSelectedMethod] = useState<'email' | 'sms' | 'whatsapp'>('email');
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [error, setError] = useState('');
+
+  const { verifyOtp, loading, error, clearError } = useAuthStore(
+    useShallow((s) => ({ verifyOtp: s.verifyOtp, loading: s.loading, error: s.error, clearError: s.clearError }))
+  );
+
+  // Redirect if no email was passed from registration
+  useEffect(() => {
+    if (!email) {
+      navigate('/register', { replace: true });
+    }
+  }, [email, navigate]);
+
+  // Auto-send OTP on mount
+  useEffect(() => {
+    if (email) {
+      authService.sendOtp({ email, type: selectedMethod.toUpperCase() as 'EMAIL' | 'SMS' | 'WHATSAPP' }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email]);
 
   useEffect(() => {
     if (timer > 0) {
@@ -48,31 +71,29 @@ export function VerifyOTP() {
   const handleVerify = async () => {
     const code = otp.join('');
     if (code.length !== 6) {
-      setError('Veuillez entrer le code à 6 chiffres');
       return;
     }
 
-    setIsVerifying(true);
-    setError('');
-
-    // Simulation de vérification
-    setTimeout(() => {
-      if (code === '123456') {
-        // Code correct
-        navigate('/investor/dashboard');
-      } else {
-        setError('Code invalide ou expiré');
-        setIsVerifying(false);
-      }
-    }, 1500);
+    clearError();
+    try {
+      await verifyOtp({ email, code });
+      navigate('/login');
+    } catch {
+      // Error already set in store
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setTimer(60);
     setCanResend(false);
     setOtp(['', '', '', '', '', '']);
-    setError('');
-    console.log(`Code renvoyé via ${selectedMethod}`);
+    clearError();
+
+    try {
+      await authService.resendOtp({ email, type: selectedMethod.toUpperCase() as 'EMAIL' | 'SMS' | 'WHATSAPP' });
+    } catch {
+      // Silently fail resend
+    }
   };
 
   return (
@@ -136,11 +157,10 @@ export function VerifyOTP() {
                 <button
                   type="button"
                   onClick={() => setSelectedMethod('email')}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                    selectedMethod === 'email'
+                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${selectedMethod === 'email'
                       ? 'border-galsen-gold bg-galsen-gold/10 text-galsen-gold'
                       : 'border-galsen-green/20 hover:border-galsen-gold/50'
-                  }`}
+                    }`}
                 >
                   <Mail className="w-5 h-5 md:w-6 md:h-6" />
                   <span className="text-xs font-medium">Email</span>
@@ -149,11 +169,10 @@ export function VerifyOTP() {
                 <button
                   type="button"
                   onClick={() => setSelectedMethod('sms')}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                    selectedMethod === 'sms'
+                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${selectedMethod === 'sms'
                       ? 'border-galsen-gold bg-galsen-gold/10 text-galsen-gold'
                       : 'border-galsen-green/20 hover:border-galsen-gold/50'
-                  }`}
+                    }`}
                 >
                   <Phone className="w-5 h-5 md:w-6 md:h-6" />
                   <span className="text-xs font-medium">SMS</span>
@@ -162,11 +181,10 @@ export function VerifyOTP() {
                 <button
                   type="button"
                   onClick={() => setSelectedMethod('whatsapp')}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                    selectedMethod === 'whatsapp'
+                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${selectedMethod === 'whatsapp'
                       ? 'border-galsen-gold bg-galsen-gold/10 text-galsen-gold'
                       : 'border-galsen-green/20 hover:border-galsen-gold/50'
-                  }`}
+                    }`}
                 >
                   <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
                   <span className="text-xs font-medium">WhatsApp</span>
@@ -191,6 +209,7 @@ export function VerifyOTP() {
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     className="w-10 h-12 md:w-12 md:h-14 text-center text-xl md:text-2xl font-bold border-2 border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green transition-colors"
                     autoFocus={index === 0}
+                    disabled={loading}
                   />
                 ))}
               </div>
@@ -202,10 +221,10 @@ export function VerifyOTP() {
             {/* Bouton de vérification */}
             <button
               onClick={handleVerify}
-              disabled={isVerifying || otp.some(d => !d)}
+              disabled={loading || otp.some(d => !d)}
               className="w-full px-6 py-3 bg-galsen-green hover:bg-galsen-green/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-4 shadow-lg shadow-galsen-green/20"
             >
-              {isVerifying ? (
+              {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Vérification...
@@ -229,13 +248,6 @@ export function VerifyOTP() {
                   Renvoyer le code dans <span className="font-medium text-galsen-blue">0:{timer.toString().padStart(2, '0')}</span>
                 </p>
               )}
-            </div>
-
-            {/* Info */}
-            <div className="mt-6 p-4 bg-galsen-white rounded-lg border border-galsen-green/10">
-              <p className="text-xs text-galsen-blue">
-                💡 <strong>Astuce :</strong> Pour la démo, utilisez le code <code className="bg-galsen-green/10 text-galsen-green px-2 py-1 rounded font-mono">123456</code>
-              </p>
             </div>
 
             {/* Retour */}

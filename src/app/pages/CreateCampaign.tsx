@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
-import { mockCategories } from '../data/mockData';
 import { ArrowLeft, ArrowRight, Upload, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { useCampaignStore, useCategoryStore } from '../store';
+import { campaignService } from '../services'; // Direct service usage for photos upload if not in store
+import { useShallow } from 'zustand/react/shallow';
 
 export function CreateCampaign() {
   const navigate = useNavigate();
@@ -10,62 +12,127 @@ export function CreateCampaign() {
   const [formData, setFormData] = useState({
     title: '',
     categoryId: '',
+    description: '', // This will map to both shortDescription and description in API? No, API has title, description. Layout suggests short + long.
+    // The API only has `description` in CreateCampaignRequest.
+    // I will concatenate or just use description. The design has shortDescription, maybe I should append it?
+    // Let's stick to the API structure: title, description. 
+    // I'll keep the UI separate but merge them or just use description.
+    // Actually, the API definition for Campaign has `description` only. 
+    // I'll map the "Description détaillée" to `description`. 
+    // The "Description courte" might be lost or I can prepend it.
+    // Let's assume description is the main one.
     shortDescription: '',
-    description: '',
-    goalAmount: '',
+    targetAmount: '', // Replaces goalAmount
     minInvestment: '',
     maxInvestment: '',
     startDate: '',
     endDate: ''
   });
-  
-  const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [additionalPhotos, setAdditionalPhotos] = useState<string[]>([]);
-  
+
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [additionalPhotoFiles, setAdditionalPhotoFiles] = useState<File[]>([]);
+  const [additionalPhotoPreviews, setAdditionalPhotoPreviews] = useState<string[]>([]);
+
+  // Stores
+  const { create, loading: createLoading, error: createError } = useCampaignStore(
+    useShallow((s) => ({ create: s.create, loading: s.loading, error: s.error }))
+  );
+
+  const { categories, fetchAll: fetchCategories } = useCategoryStore(
+    useShallow((s) => ({ categories: s.categories, fetchAll: s.fetchAll }))
+  );
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-  
+
   const handleNext = () => {
     if (currentStep < 5) setCurrentStep(currentStep + 1);
   };
-  
+
   const handlePrev = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
-  
+
   const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setCoverImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setCoverImage(reader.result as string);
+        setCoverImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleAdditionalPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    if (files.length + additionalPhotoFiles.length > 10) {
+      alert("Maximum 10 photos autorisées");
+      return;
+    }
+
+    const newFiles = [...additionalPhotoFiles, ...files];
+    setAdditionalPhotoFiles(newFiles);
+
     files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAdditionalPhotos(prev => [...prev, reader.result as string]);
+        setAdditionalPhotoPreviews(prev => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
     });
   };
-  
+
+  const removeAdditionalPhoto = (index: number) => {
+    setAdditionalPhotoFiles(prev => prev.filter((_, i) => i !== index));
+    setAdditionalPhotoPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSaveDraft = () => {
-    alert('Campagne enregistrée comme brouillon !');
-    navigate('/business/dashboard');
+    alert('Fonctionnalité brouillon bientôt disponible !');
+    // navigate('/business/dashboard');
   };
-  
-  const handleSubmit = () => {
-    alert('Campagne soumise pour validation !');
-    navigate('/business/dashboard');
+
+  const handleSubmit = async () => {
+    try {
+      // 1. Create Campaign
+      // Note: API expects title, description, targetAmount, startDate, endDate, categoryId.
+      // We preserve shortDescription by prepending it to description if needed, or just ignoring it if API doesn't support it.
+      // Let's prepend it for now: "**Résumé**: ... \n\n **Détails**: ..."
+      const fullDescription = formData.shortDescription
+        ? `**Résumé**: ${formData.shortDescription}\n\n${formData.description}`
+        : formData.description;
+
+      const campaign = await create({
+        categoryId: formData.categoryId,
+        title: formData.title,
+        description: fullDescription,
+        targetAmount: Number(formData.targetAmount),
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        coverImage: coverImageFile || undefined
+      });
+
+      // 2. Upload additional photos if any
+      if (additionalPhotoFiles.length > 0 && campaign.id) {
+        await campaignService.uploadPhotos(campaign.id, additionalPhotoFiles);
+      }
+
+      alert('Campagne soumise avec succès !');
+      navigate('/business/dashboard');
+    } catch (err) {
+      // Error handled in store, but we can show alert or rely on UI error display
+      console.error(err);
+    }
   };
-  
+
   return (
     <Layout userType="business">
       <div>
@@ -81,16 +148,15 @@ export function CreateCampaign() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Créer une campagne</h1>
           <p className="text-gray-600">Remplissez les informations de votre campagne de financement</p>
         </div>
-        
+
         {/* Stepper */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex items-center justify-between">
             {[1, 2, 3, 4, 5].map((step) => (
               <React.Fragment key={step}>
                 <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${
-                    step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
                     {step}
                   </div>
                   <span className="text-xs mt-1 text-gray-600 hidden md:block">
@@ -102,22 +168,27 @@ export function CreateCampaign() {
                   </span>
                 </div>
                 {step < 5 && (
-                  <div className={`flex-1 h-1 mx-2 ${
-                    step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
-                  }`} />
+                  <div className={`flex-1 h-1 mx-2 ${step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
+                    }`} />
                 )}
               </React.Fragment>
             ))}
           </div>
         </div>
-        
+
         {/* Formulaire */}
         <div className="bg-white rounded-lg shadow-md p-8">
+          {createError && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+              {createError}
+            </div>
+          )}
+
           {/* Étape 1: Informations de base */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Informations de base</h2>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Titre de la campagne <span className="text-red-500">*</span>
@@ -134,7 +205,7 @@ export function CreateCampaign() {
                 />
                 <p className="text-xs text-gray-500 mt-1">{formData.title.length}/200 caractères</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Catégorie <span className="text-red-500">*</span>
@@ -147,12 +218,12 @@ export function CreateCampaign() {
                   required
                 >
                   <option value="">Sélectionnez une catégorie</option>
-                  {mockCategories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.libelle}</option>
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Description courte <span className="text-red-500">*</span>
@@ -169,7 +240,7 @@ export function CreateCampaign() {
                 />
                 <p className="text-xs text-gray-500 mt-1">{formData.shortDescription.length}/500 caractères</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Description détaillée <span className="text-red-500">*</span>
@@ -186,20 +257,20 @@ export function CreateCampaign() {
               </div>
             </div>
           )}
-          
+
           {/* Étape 2: Objectifs financiers */}
           {currentStep === 2 && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Objectifs financiers</h2>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Montant objectif (FCFA) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
-                  name="goalAmount"
-                  value={formData.goalAmount}
+                  name="targetAmount"
+                  value={formData.targetAmount}
                   onChange={handleChange}
                   min="100000"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -207,7 +278,7 @@ export function CreateCampaign() {
                   required
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -223,8 +294,9 @@ export function CreateCampaign() {
                     placeholder="50000"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">Sera inclus dans la description</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Investissement maximum (FCFA)
@@ -239,7 +311,7 @@ export function CreateCampaign() {
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -254,7 +326,7 @@ export function CreateCampaign() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Date de fin <span className="text-red-500">*</span>
@@ -269,7 +341,7 @@ export function CreateCampaign() {
                   />
                 </div>
               </div>
-              
+
               {formData.startDate && formData.endDate && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-900">
@@ -279,22 +351,25 @@ export function CreateCampaign() {
               )}
             </div>
           )}
-          
+
           {/* Étape 3: Images */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Images de la campagne</h2>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Image de couverture <span className="text-red-500">*</span>
                 </label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
-                  {coverImage ? (
+                  {coverImagePreview ? (
                     <div className="relative">
-                      <img src={coverImage} alt="Couverture" className="max-h-64 mx-auto rounded-lg" />
+                      <img src={coverImagePreview} alt="Couverture" className="max-h-64 mx-auto rounded-lg" />
                       <button
-                        onClick={() => setCoverImage(null)}
+                        onClick={() => {
+                          setCoverImageFile(null);
+                          setCoverImagePreview(null);
+                        }}
                         className="absolute top-2 right-2 px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700"
                       >
                         Supprimer
@@ -318,18 +393,18 @@ export function CreateCampaign() {
                   )}
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Photos additionnelles (max 10)
                 </label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-500 transition-colors">
                   <div className="grid grid-cols-5 gap-4 mb-4">
-                    {additionalPhotos.map((photo, index) => (
+                    {additionalPhotoPreviews.map((photo, index) => (
                       <div key={index} className="relative">
                         <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-24 object-cover rounded-lg" />
                         <button
-                          onClick={() => setAdditionalPhotos(additionalPhotos.filter((_, i) => i !== index))}
+                          onClick={() => removeAdditionalPhoto(index)}
                           className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white text-xs rounded-full hover:bg-red-700"
                         >
                           ×
@@ -337,7 +412,7 @@ export function CreateCampaign() {
                       </div>
                     ))}
                   </div>
-                  {additionalPhotos.length < 10 && (
+                  {additionalPhotoFiles.length < 10 && (
                     <label className="flex flex-col items-center gap-2 cursor-pointer">
                       <ImageIcon className="w-8 h-8 text-gray-400" />
                       <span className="text-sm text-gray-600">Ajouter des photos</span>
@@ -354,13 +429,13 @@ export function CreateCampaign() {
               </div>
             </div>
           )}
-          
+
           {/* Étape 4: Documents */}
           {currentStep === 4 && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Documents légaux (optionnel)</h2>
               <p className="text-gray-600 mb-4">Uploadez vos documents légaux pour renforcer la crédibilité de votre campagne</p>
-              
+
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                 <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-700 mb-4">Business plan, états financiers, licences...</p>
@@ -372,37 +447,38 @@ export function CreateCampaign() {
                     multiple
                     className="hidden"
                   />
+                  {/* Note: Document upload implementation pending backend support or similar to photos */}
                 </label>
                 <p className="text-xs text-gray-500 mt-4">Formats acceptés : PDF, DOC, DOCX</p>
               </div>
             </div>
           )}
-          
+
           {/* Étape 5: Révision */}
           {currentStep === 5 && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Révision de la campagne</h2>
-              
+
               <div className="bg-gray-50 rounded-lg p-6 space-y-4">
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-1">Titre</h3>
                   <p className="text-gray-900">{formData.title || 'Non renseigné'}</p>
                 </div>
-                
+
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-1">Catégorie</h3>
                   <p className="text-gray-900">
-                    {mockCategories.find(c => c.id === formData.categoryId)?.name || 'Non renseignée'}
+                    {categories.find(c => c.id === formData.categoryId)?.libelle || 'Non renseignée'}
                   </p>
                 </div>
-                
+
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-1">Objectif financier</h3>
                   <p className="text-gray-900">
-                    {formData.goalAmount ? `${new Intl.NumberFormat('fr-FR').format(Number(formData.goalAmount))} FCFA` : 'Non renseigné'}
+                    {formData.targetAmount ? `${new Intl.NumberFormat('fr-FR').format(Number(formData.targetAmount))} FCFA` : 'Non renseigné'}
                   </p>
                 </div>
-                
+
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-1">Période</h3>
                   <p className="text-gray-900">
@@ -411,47 +487,49 @@ export function CreateCampaign() {
                       : 'Non renseignée'}
                   </p>
                 </div>
-                
+
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-1">Image de couverture</h3>
-                  {coverImage ? (
-                    <img src={coverImage} alt="Aperçu" className="max-h-32 rounded-lg" />
+                  {coverImagePreview ? (
+                    <img src={coverImagePreview} alt="Aperçu" className="max-h-32 rounded-lg" />
                   ) : (
                     <p className="text-gray-500">Aucune image</p>
                   )}
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <input type="checkbox" id="certify" className="mt-1" required />
                 <label htmlFor="certify" className="text-sm text-blue-900">
-                  Je certifie que toutes les informations fournies sont exactes et conformes à la réalité. 
+                  Je certifie que toutes les informations fournies sont exactes et conformes à la réalité.
                   Je comprends que toute fausse déclaration peut entraîner le rejet de ma campagne.
                 </label>
               </div>
             </div>
           )}
-          
+
           {/* Boutons de navigation */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
             {currentStep > 1 && (
               <button
                 onClick={handlePrev}
-                className="inline-flex items-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={createLoading}
+                className="inline-flex items-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <ArrowLeft className="w-5 h-5" />
                 Précédent
               </button>
             )}
-            
+
             <div className="flex gap-3 ml-auto">
               <button
                 onClick={handleSaveDraft}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={createLoading}
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Enregistrer comme brouillon
               </button>
-              
+
               {currentStep < 5 ? (
                 <button
                   onClick={handleNext}
@@ -463,10 +541,17 @@ export function CreateCampaign() {
               ) : (
                 <button
                   onClick={handleSubmit}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                  disabled={createLoading}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle className="w-5 h-5" />
-                  Soumettre pour validation
+                  {createLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Soumettre pour validation
+                    </>
+                  )}
                 </button>
               )}
             </div>

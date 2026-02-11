@@ -1,27 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
-import { mockInvestorProfile, mockWalletTransactions } from '../data/mockData';
 import { Wallet, Download, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell
+} from '../components/ui/table';
+import { useWalletStore } from '../store';
+import { useShallow } from 'zustand/react/shallow';
 
 export function InvestorWallet() {
   const [selectedType, setSelectedType] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
-  const filteredTransactions = mockWalletTransactions.filter(tx => {
+  const { wallet, transactions, fetchWallet, fetchTransactions, deposit, loading, error } = useWalletStore(
+    useShallow(s => ({
+      wallet: s.wallet,
+      transactions: s.transactions,
+      fetchWallet: s.fetchWallet,
+      fetchTransactions: s.fetchTransactions,
+      deposit: s.deposit,
+      loading: s.loading,
+      error: s.error
+    }))
+  );
+
+  useEffect(() => {
+    fetchWallet();
+    fetchTransactions();
+  }, [fetchWallet, fetchTransactions]);
+
+  const filteredTransactions = transactions.filter(tx => {
     if (selectedType !== 'all' && tx.type !== selectedType) return false;
-    if (dateRange.start && new Date(tx.date) < new Date(dateRange.start)) return false;
-    if (dateRange.end && new Date(tx.date) > new Date(dateRange.end)) return false;
+    if (dateRange.start && new Date(tx.createdAt) < new Date(dateRange.start)) return false;
+    if (dateRange.end && new Date(tx.createdAt) > new Date(dateRange.end)) return false;
     return true;
   });
 
-  const totalDebit = mockWalletTransactions
-    .filter(tx => tx.amount < 0)
+  const totalDebit = transactions
+    .filter(tx => ['WITHDRAWAL', 'INVESTMENT'].includes(tx.type))
     .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
-  const totalCredit = mockWalletTransactions
-    .filter(tx => tx.amount > 0)
+  const totalCredit = transactions
+    .filter(tx => ['DEPOSIT', 'RETURN', 'REFUND'].includes(tx.type))
     .reduce((sum, tx) => sum + tx.amount, 0);
+
+  const handleDeposit = async () => {
+    // Temporary simple prompt for deposit
+    const amountStr = prompt("Montant à recharger (FCFA):");
+    if (amountStr) {
+      const amount = Number(amountStr);
+      if (amount > 0) {
+        await deposit({ amount });
+        fetchWallet();
+        fetchTransactions();
+      }
+    }
+  };
+
+  const handleWithdraw = () => {
+    alert("Retraits bientôt disponibles via le store Retrait.");
+  };
 
   return (
     <Layout userType="investor">
@@ -30,6 +73,12 @@ export function InvestorWallet() {
           <h1 className="text-2xl md:text-3xl font-bold text-galsen-blue mb-2">Mon Portefeuille</h1>
           <p className="text-galsen-blue/70 text-sm md:text-base">Gérez votre solde et consultez vos transactions</p>
         </div>
+
+        {error && (
+          <div className="p-3 bg-red-100 border border-red-300 text-red-700 text-sm rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Card de solde */}
         <div className="bg-gradient-to-br from-galsen-green to-galsen-blue rounded-2xl shadow-2xl p-6 md:p-8 text-white border border-galsen-green/20">
@@ -44,13 +93,13 @@ export function InvestorWallet() {
               </div>
             </div>
             <div className="px-3 py-1 bg-galsen-gold rounded-full text-xs font-medium text-galsen-blue w-fit">
-              ACTIF
+              {wallet?.status || 'INCONNU'}
             </div>
           </div>
 
           <div className="mb-6">
             <p className="text-3xl md:text-5xl font-bold mb-2">
-              {new Intl.NumberFormat('fr-FR').format(mockInvestorProfile.walletBalance)} FCFA
+              {wallet ? new Intl.NumberFormat('fr-FR').format(wallet.balance) : '---'} FCFA
             </p>
           </div>
 
@@ -77,10 +126,17 @@ export function InvestorWallet() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mt-6">
-            <button className="flex-1 px-6 py-3 bg-white text-galsen-green font-medium rounded-lg hover:bg-white/90 transition-colors shadow-md">
+            <button
+              onClick={handleDeposit}
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-white text-galsen-green font-medium rounded-lg hover:bg-white/90 transition-colors shadow-md disabled:opacity-70"
+            >
               Recharger
             </button>
-            <button className="flex-1 px-6 py-3 bg-white/20 text-white font-medium rounded-lg hover:bg-white/30 transition-colors backdrop-blur-sm">
+            <button
+              onClick={handleWithdraw}
+              className="flex-1 px-6 py-3 bg-white/20 text-white font-medium rounded-lg hover:bg-white/30 transition-colors backdrop-blur-sm"
+            >
               Retirer
             </button>
           </div>
@@ -110,8 +166,9 @@ export function InvestorWallet() {
                 <option value="all">Tous les types</option>
                 <option value="INVESTMENT">Investissement</option>
                 <option value="DEPOSIT">Recharge</option>
+                <option value="WITHDRAWAL">Retrait</option>
                 <option value="REFUND">Remboursement</option>
-                <option value="TRANSFER">Transfert</option>
+                <option value="RETURN">Retour sur inv.</option>
               </select>
             </div>
 
@@ -145,32 +202,31 @@ export function InvestorWallet() {
             {filteredTransactions.map((tx) => (
               <div key={tx.id} className="p-4 border border-galsen-green/10 rounded-lg bg-galsen-white">
                 <div className="flex justify-between items-start mb-3">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    tx.type === 'INVESTMENT' ? 'bg-galsen-red/10 text-galsen-red' :
-                    tx.type === 'DEPOSIT' ? 'bg-galsen-green/10 text-galsen-green' :
-                    'bg-galsen-gold/10 text-galsen-gold'
-                  }`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.type === 'INVESTMENT' ? 'bg-galsen-red/10 text-galsen-red' :
+                      tx.type === 'DEPOSIT' ? 'bg-galsen-green/10 text-galsen-green' :
+                        'bg-galsen-gold/10 text-galsen-gold'
+                    }`}>
                     {tx.type === 'INVESTMENT' && <ArrowDownCircle className="w-3 h-3" />}
                     {tx.type === 'DEPOSIT' && <ArrowUpCircle className="w-3 h-3" />}
                     {tx.type === 'INVESTMENT' ? 'Investissement' :
-                     tx.type === 'DEPOSIT' ? 'Recharge' :
-                     tx.type === 'REFUND' ? 'Remboursement' : 'Transfert'}
+                      tx.type === 'DEPOSIT' ? 'Recharge' :
+                        tx.type === 'WITHDRAWAL' ? 'Retrait' :
+                          tx.type === 'REFUND' ? 'Remboursement' : 'Retour'}
                   </span>
                   <StatusBadge status={tx.status as any} />
                 </div>
                 <p className="text-sm text-galsen-blue mb-2">{tx.description}</p>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-galsen-blue/70">
-                    {new Date(tx.date).toLocaleDateString('fr-FR', {
+                    {new Date(tx.createdAt).toLocaleDateString('fr-FR', {
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric'
                     })}
                   </span>
-                  <span className={`text-sm font-bold ${
-                    tx.amount < 0 ? 'text-galsen-red' : 'text-galsen-green'
-                  }`}>
-                    {tx.amount < 0 ? '' : '+'}{new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
+                  <span className={`text-sm font-bold ${['INVESTMENT', 'WITHDRAWAL'].includes(tx.type) ? 'text-galsen-red' : 'text-galsen-green'
+                    }`}>
+                    {['INVESTMENT', 'WITHDRAWAL'].includes(tx.type) ? '-' : '+'}{new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
                   </span>
                 </div>
               </div>
@@ -179,58 +235,57 @@ export function InvestorWallet() {
 
           {/* Version desktop - Table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-galsen-green/20">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Date & Heure</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Type</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Description</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Montant</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-galsen-green/20">
+                  <TableHead className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Date & Heure</TableHead>
+                  <TableHead className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Type</TableHead>
+                  <TableHead className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Description</TableHead>
+                  <TableHead className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Montant</TableHead>
+                  <TableHead className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Statut</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className="border-b border-galsen-green/10 hover:bg-galsen-white transition-colors">
-                    <td className="py-4 px-4 text-sm text-galsen-blue">
-                      {new Date(tx.date).toLocaleDateString('fr-FR', {
+                  <TableRow key={tx.id} className="border-b border-galsen-green/10 hover:bg-galsen-white transition-colors">
+                    <TableCell className="py-4 px-4 text-sm text-galsen-blue">
+                      {new Date(tx.createdAt).toLocaleDateString('fr-FR', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        tx.type === 'INVESTMENT' ? 'bg-galsen-red/10 text-galsen-red' :
-                        tx.type === 'DEPOSIT' ? 'bg-galsen-green/10 text-galsen-green' :
-                        'bg-galsen-gold/10 text-galsen-gold'
-                      }`}>
+                    </TableCell>
+                    <TableCell className="py-4 px-4">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.type === 'INVESTMENT' ? 'bg-galsen-red/10 text-galsen-red' :
+                          tx.type === 'DEPOSIT' ? 'bg-galsen-green/10 text-galsen-green' :
+                            'bg-galsen-gold/10 text-galsen-gold'
+                        }`}>
                         {tx.type === 'INVESTMENT' && <ArrowDownCircle className="w-3 h-3" />}
                         {tx.type === 'DEPOSIT' && <ArrowUpCircle className="w-3 h-3" />}
                         {tx.type === 'INVESTMENT' ? 'Investissement' :
-                         tx.type === 'DEPOSIT' ? 'Recharge' :
-                         tx.type === 'REFUND' ? 'Remboursement' : 'Transfert'}
+                          tx.type === 'DEPOSIT' ? 'Recharge' :
+                            tx.type === 'WITHDRAWAL' ? 'Retrait' :
+                              tx.type === 'REFUND' ? 'Remboursement' : 'Retour'}
                       </span>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-galsen-blue/70">
+                    </TableCell>
+                    <TableCell className="py-4 px-4 text-sm text-galsen-blue/70">
                       {tx.description}
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className={`text-sm font-medium ${
-                        tx.amount < 0 ? 'text-galsen-red' : 'text-galsen-green'
-                      }`}>
-                        {tx.amount < 0 ? '' : '+'}{new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
+                    </TableCell>
+                    <TableCell className="py-4 px-4">
+                      <span className={`text-sm font-medium ${['INVESTMENT', 'WITHDRAWAL'].includes(tx.type) ? 'text-galsen-red' : 'text-galsen-green'
+                        }`}>
+                        {['INVESTMENT', 'WITHDRAWAL'].includes(tx.type) ? '-' : '+'}{new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
                       </span>
-                    </td>
-                    <td className="py-4 px-4">
+                    </TableCell>
+                    <TableCell className="py-4 px-4">
                       <StatusBadge status={tx.status as any} />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {filteredTransactions.length === 0 && (

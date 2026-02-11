@@ -1,22 +1,54 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock } from 'lucide-react';
+import { useAuthStore } from '../store';
+import { useShallow } from 'zustand/react/shallow';
 import logoGalsen from '../images/logogalsen_invest.png';
+
+/** Décode le payload d'un JWT (sans vérification de signature, côté client uniquement). */
+function parseJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64 = token.split('.')[1];
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+/** Extrait les rôles Keycloak depuis le JWT. */
+function getRolesFromToken(token: string): string[] {
+  const payload = parseJwtPayload(token);
+  if (!payload) return [];
+  const roles = (payload as { realm_access?: { roles?: string[] } }).realm_access?.roles ?? [];
+  return roles;
+}
+
+/** Détermine la route de redirection selon les rôles. */
+function getDashboardRoute(roles: string[]): string {
+  if (roles.includes('ADMIN')) return '/admin/dashboard';
+  if (roles.includes('BUSINESS')) return '/business/dashboard';
+  return '/investor/dashboard';
+}
 
 export function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { login, loading, error, clearError } = useAuthStore(
+    useShallow((s) => ({ login: s.login, token: s.token, loading: s.loading, error: s.error, clearError: s.clearError }))
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulation de connexion
-    if (email.includes('business') || email.includes('entreprise')) {
-      navigate('/business/dashboard');
-    } else if (email.includes('admin')) {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/investor/dashboard');
+    clearError();
+    try {
+      await login({ username: email, password });
+      const token = useAuthStore.getState().token;
+      const roles = token ? getRolesFromToken(token) : [];
+      navigate(getDashboardRoute(roles));
+    } catch {
+      // Error is already set in the store
     }
   };
 
@@ -74,6 +106,13 @@ export function Login() {
           <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-galsen-green/10">
             <h2 className="text-2xl font-bold text-galsen-blue mb-6">Connexion</h2>
 
+            {/* Affichage erreur */}
+            {error && (
+              <div className="mb-4 p-3 bg-galsen-red/10 border border-galsen-red/30 text-galsen-red text-sm rounded-lg">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div>
@@ -90,6 +129,7 @@ export function Login() {
                     className="w-full pl-10 pr-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green transition-colors"
                     placeholder="votre.email@exemple.com"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -109,6 +149,7 @@ export function Login() {
                     className="w-full pl-10 pr-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green transition-colors"
                     placeholder="••••••••"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -123,9 +164,17 @@ export function Login() {
               {/* Bouton de connexion */}
               <button
                 type="submit"
-                className="w-full bg-galsen-green hover:bg-galsen-green/90 text-white font-medium py-3 rounded-lg transition-colors shadow-lg shadow-galsen-green/20"
+                disabled={loading}
+                className="w-full bg-galsen-green hover:bg-galsen-green/90 text-white font-medium py-3 rounded-lg transition-colors shadow-lg shadow-galsen-green/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Se connecter
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Connexion en cours...
+                  </span>
+                ) : (
+                  'Se connecter'
+                )}
               </button>
             </form>
 
@@ -146,16 +195,6 @@ export function Login() {
             >
               S'inscrire
             </Link>
-
-            {/* Démo rapide */}
-            <div className="mt-6 p-4 bg-galsen-white rounded-lg border border-galsen-green/10">
-              <p className="text-xs text-galsen-blue font-medium mb-2">Démo rapide :</p>
-              <div className="space-y-1 text-xs text-galsen-blue/70">
-                <p>• Investisseur : utilisez n'importe quel email</p>
-                <p>• Entreprise : email contenant "business"</p>
-                <p>• Admin : email contenant "admin"</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>

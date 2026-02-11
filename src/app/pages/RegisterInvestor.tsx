@@ -1,52 +1,178 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { mockCountries } from '../data/mockData';
+import { useAuthStore } from '../store';
+import { apiGet } from '../services/httpClient';
 import logoGalsen from '../images/logogalsen_invest.png';
 
 export function RegisterInvestor() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    // Étape 1: Identité
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    nationality: 'SN',
+  const [localError, setLocalError] = useState('');
+  
+  // Détecter si on est en mode business ou investor
+  const isBusiness = location.pathname.includes('/business');
 
-    // Étape 2: Contact
+  const [formData, setFormData] = useState({
+    // Champs communs
     email: '',
     password: '',
     confirmPassword: '',
     phone: '',
-
-    // Étape 3: Localisation
+    
+    // Champs Investor
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    nationality: 'SN',
     countryIsoCode: 'SN',
     city: '',
     address: '',
-
-    // Étape 4: Profil financier
     occupation: '',
-    incomeBracket: 'MEDIUM'
+    incomeBracket: 'MID',
+    
+    // Champs Business
+    companyName: '',
+    tradeName: '',
+    legalForm: 'SARL',
+    sectorId: '',
+    registrationNumber: '',
+    taxId: '',
+    foundedDate: '',
+    representativeName: '',
+    representativeTitle: '',
+    websiteUrl: '',
+    description: '',
+    employeeCount: '',
+    annualRevenue: ''
   });
+
+  // Stores réactivés
+  const registerInvestor = useAuthStore((s) => s.registerInvestor);
+  const registerBusiness = useAuthStore((s) => s.registerBusiness);
+  const authLoading = useAuthStore((s) => s.loading);
+  const authError = useAuthStore((s) => s.error);
+  const clearAuthError = useAuthStore((s) => s.clearError);
+
+  const [countries, setCountries] = useState<any[]>([]);
+  const [sectors, setSectors] = useState<any[]>([]);
+  const [refLoading, setRefLoading] = useState(false);
+
+  // Récupération des pays et secteurs depuis l'API publique
+  useEffect(() => {
+    const fetchData = async () => {
+      setRefLoading(true);
+      try {
+        // Charger les pays en utilisant httpClient qui gère les headers correctement
+        const countriesResult = await apiGet<any>('/auth-service/api/pays');
+        if (countriesResult.success && countriesResult.data && countriesResult.data.content) {
+          setCountries(countriesResult.data.content);
+          console.log('Pays chargés:', countriesResult.data.content.length, 'pays');
+        }
+
+        // Charger les secteurs
+        const sectorsResult = await apiGet<any>('/auth-service/api/sectors');
+        if (sectorsResult.success && sectorsResult.data && sectorsResult.data.content) {
+          setSectors(sectorsResult.data.content);
+          console.log('Secteurs chargés:', sectorsResult.data.content.length, 'secteurs');
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des données:', error);
+        // Fallback sur des valeurs par défaut en cas d'erreur
+        setCountries([
+          { id: '1', codeIso: 'SN', libelle: 'Sénégal', indicatifTel: '+221' }
+        ]);
+      } finally {
+        setRefLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleNext = () => {
-    if (currentStep < 4) setCurrentStep(currentStep + 1);
+    if (currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    }
   };
 
   const handlePrev = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Inscription investisseur:', formData);
-    navigate('/verify-otp');
+    clearAuthError();
+    setLocalError('');
+
+    // Validation du mot de passe
+    if (formData.password !== formData.confirmPassword) {
+      setLocalError('Les mots de passe ne correspondent pas');
+      setCurrentStep(2);
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setLocalError('Le mot de passe doit contenir au moins 8 caractères');
+      setCurrentStep(2);
+      return;
+    }
+
+    try {
+      if (isBusiness) {
+        // Inscription Business
+        await registerBusiness({
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          companyName: formData.companyName,
+          tradeName: formData.tradeName || undefined,
+          legalForm: formData.legalForm as 'SARL' | 'SA' | 'SAS' | 'SUARL' | 'SNC' | 'GIE' | 'ASSOCIATION' | 'OTHER',
+          sectorId: formData.sectorId,
+          registrationNumber: formData.registrationNumber || undefined,
+          taxId: formData.taxId || undefined,
+          foundedDate: formData.foundedDate || undefined,
+          representativeName: formData.representativeName || undefined,
+          representativeTitle: formData.representativeTitle || undefined,
+          countryIsoCode: formData.countryIsoCode || undefined,
+          address: formData.address || undefined,
+          city: formData.city || undefined,
+          websiteUrl: formData.websiteUrl || undefined,
+          description: formData.description || undefined,
+          employeeCount: formData.employeeCount ? parseInt(formData.employeeCount) : undefined,
+          annualRevenue: formData.annualRevenue ? parseFloat(formData.annualRevenue) : undefined,
+        });
+      } else {
+        // Inscription Investor
+        await registerInvestor({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          birthDate: formData.dateOfBirth,
+          nationalityIsoCode: formData.nationality,
+          residenceCountryIsoCode: formData.countryIsoCode,
+          city: formData.city,
+          address: formData.address,
+          occupation: formData.occupation,
+          incomeBracket: formData.incomeBracket as 'LOW' | 'MID' | 'HIGH' | 'VERY_HIGH',
+        });
+      }
+      // Redirection vers la page OTP après inscription réussie
+      navigate('/verify-otp', { state: { email: formData.email } });
+    } catch {
+      // L'erreur est déjà gérée dans le store
+      console.error('Erreur lors de l\'inscription');
+    }
   };
+
+  const loading = authLoading || refLoading;
 
   return (
     <div className="min-h-screen bg-galsen-white flex">
@@ -91,10 +217,12 @@ export function RegisterInvestor() {
           {/* Header */}
           <div className="text-center mb-6">
             <h1 className="text-2xl md:text-3xl font-bold text-galsen-green mb-2">
-              Inscription Investisseur
+              {isBusiness ? 'Inscription Entreprise' : 'Inscription Investisseur'}
             </h1>
             <p className="text-galsen-blue/70 text-sm md:text-base">
-              Créez votre compte pour commencer à investir
+              {isBusiness 
+                ? 'Créez votre compte entreprise pour lever des fonds' 
+                : 'Créez votre compte pour commencer à investir'}
             </p>
           </div>
 
@@ -104,22 +232,31 @@ export function RegisterInvestor() {
               {[1, 2, 3, 4].map((step) => (
                 <React.Fragment key={step}>
                   <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-medium text-sm md:text-base ${
-                      step <= currentStep ? 'bg-galsen-green text-white' : 'bg-gray-200 text-gray-600'
-                    }`}>
+                    <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-medium text-sm md:text-base ${step <= currentStep ? 'bg-galsen-green text-white' : 'bg-gray-200 text-gray-600'
+                      }`}>
                       {step}
                     </div>
                     <span className="text-xs mt-1 text-galsen-blue/70 hidden sm:block">
-                      {step === 1 && 'Identité'}
-                      {step === 2 && 'Contact'}
-                      {step === 3 && 'Localisation'}
-                      {step === 4 && 'Profil'}
+                      {isBusiness ? (
+                        <>
+                          {step === 1 && 'Entreprise'}
+                          {step === 2 && 'Contact'}
+                          {step === 3 && 'Localisation'}
+                          {step === 4 && 'Détails'}
+                        </>
+                      ) : (
+                        <>
+                          {step === 1 && 'Identité'}
+                          {step === 2 && 'Contact'}
+                          {step === 3 && 'Localisation'}
+                          {step === 4 && 'Profil'}
+                        </>
+                      )}
                     </span>
                   </div>
                   {step < 4 && (
-                    <div className={`flex-1 h-1 mx-1 md:mx-2 ${
-                      step < currentStep ? 'bg-galsen-green' : 'bg-gray-200'
-                    }`} />
+                    <div className={`flex-1 h-1 mx-1 md:mx-2 ${step < currentStep ? 'bg-galsen-green' : 'bg-gray-200'
+                      }`} />
                   )}
                 </React.Fragment>
               ))}
@@ -128,72 +265,161 @@ export function RegisterInvestor() {
 
           {/* Formulaire */}
           <div className="bg-white rounded-2xl shadow-xl p-4 md:p-8 border border-galsen-green/10 max-h-[calc(100vh-280px)] md:max-h-[calc(100vh-240px)] overflow-y-auto">
+            {/* Affichage erreur */}
+            {(authError || localError) && (
+              <div className="mb-4 p-3 bg-galsen-red/10 border border-galsen-red/30 text-galsen-red text-sm rounded-lg">
+                {authError || localError}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
-              {/* Étape 1: Identité */}
+              {/* Étape 1: Identité ou Entreprise */}
               {currentStep === 1 && (
                 <div className="space-y-4">
-                  <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">Informations d'identité</h2>
+                  <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">
+                    {isBusiness ? "Informations de l'entreprise" : "Informations d'identité"}
+                  </h2>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-galsen-blue mb-2">
-                        Prénom <span className="text-galsen-red">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
-                        required
-                      />
-                    </div>
+                  {isBusiness ? (
+                    // Champs Business
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-galsen-blue mb-2">
+                          Nom de l'entreprise <span className="text-galsen-red">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="companyName"
+                          value={formData.companyName}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                          placeholder="Galsen Tech SARL"
+                          required
+                        />
+                      </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-galsen-blue mb-2">
-                        Nom <span className="text-galsen-red">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
-                        required
-                      />
-                    </div>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-galsen-blue mb-2">
+                          Nom commercial
+                        </label>
+                        <input
+                          type="text"
+                          name="tradeName"
+                          value={formData.tradeName}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                          placeholder="GalsenTech"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-galsen-blue mb-2">
-                      Date de naissance <span className="text-galsen-red">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
-                      required
-                    />
-                  </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Forme juridique <span className="text-galsen-red">*</span>
+                          </label>
+                          <select
+                            name="legalForm"
+                            value={formData.legalForm}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            required
+                          >
+                            <option value="SARL">SARL</option>
+                            <option value="SA">SA</option>
+                            <option value="SAS">SAS</option>
+                            <option value="SUARL">SUARL</option>
+                            <option value="SNC">SNC</option>
+                            <option value="GIE">GIE</option>
+                            <option value="ASSOCIATION">Association</option>
+                            <option value="OTHER">Autre</option>
+                          </select>
+                        </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-galsen-blue mb-2">
-                      Nationalité <span className="text-galsen-red">*</span>
-                    </label>
-                    <select
-                      name="nationality"
-                      value={formData.nationality}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
-                      required
-                    >
-                      {mockCountries.map(country => (
-                        <option key={country.code} value={country.code}>{country.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Secteur d'activité <span className="text-galsen-red">*</span>
+                          </label>
+                          <select
+                            name="sectorId"
+                            value={formData.sectorId}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            required
+                          >
+                            <option value="">Sélectionnez</option>
+                            {sectors?.map(sector => (
+                              <option key={sector.id} value={sector.id}>{sector.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    // Champs Investor
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Prénom <span className="text-galsen-red">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Nom <span className="text-galsen-red">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-galsen-blue mb-2">
+                          Date de naissance <span className="text-galsen-red">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          name="dateOfBirth"
+                          value={formData.dateOfBirth}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-galsen-blue mb-2">
+                          Nationalité <span className="text-galsen-red">*</span>
+                        </label>
+                        <select
+                          name="nationality"
+                          value={formData.nationality}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                          required
+                        >
+                          <option value="SN">Sénégal</option>
+                          {countries?.map(country => (
+                            <option key={country.id} value={country.codeIso}>{country.libelle}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -281,8 +507,9 @@ export function RegisterInvestor() {
                       className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                       required
                     >
-                      {mockCountries.map(country => (
-                        <option key={country.code} value={country.code}>{country.name}</option>
+                      <option value="SN">Sénégal</option>
+                      {countries?.map(country => (
+                        <option key={country.id} value={country.codeIso}>{country.libelle}</option>
                       ))}
                     </select>
                   </div>
@@ -319,53 +546,201 @@ export function RegisterInvestor() {
                 </div>
               )}
 
-              {/* Étape 4: Profil financier */}
+              {/* Étape 4: Profil financier ou Détails Business */}
               {currentStep === 4 && (
                 <div className="space-y-4">
-                  <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">Profil financier</h2>
+                  <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">
+                    {isBusiness ? 'Détails supplémentaires' : 'Profil financier'}
+                  </h2>
 
-                  <div>
-                    <label className="block text-sm font-medium text-galsen-blue mb-2">
-                      Profession <span className="text-galsen-red">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="occupation"
-                      value={formData.occupation}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
-                      placeholder="Ex: Ingénieur, Commerçant..."
-                      required
-                    />
-                  </div>
+                  {isBusiness ? (
+                    // Champs Business supplémentaires
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            N° d'enregistrement
+                          </label>
+                          <input
+                            type="text"
+                            name="registrationNumber"
+                            value={formData.registrationNumber}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            placeholder="SN-DKR-2020-B-12345"
+                          />
+                        </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-galsen-blue mb-2">
-                      Tranche de revenus annuels <span className="text-galsen-red">*</span>
-                    </label>
-                    <select
-                      name="incomeBracket"
-                      value={formData.incomeBracket}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
-                      required
-                    >
-                      <option value="LOW">Moins de 2 000 000 FCFA</option>
-                      <option value="MEDIUM">2 000 000 - 10 000 000 FCFA</option>
-                      <option value="HIGH">Plus de 10 000 000 FCFA</option>
-                    </select>
-                  </div>
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            N° fiscal (NINEA)
+                          </label>
+                          <input
+                            type="text"
+                            name="taxId"
+                            value={formData.taxId}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            placeholder="12345678901234"
+                          />
+                        </div>
+                      </div>
 
-                  <div className="bg-galsen-green/5 border border-galsen-green/20 rounded-lg p-4 mt-6">
-                    <h3 className="font-medium text-galsen-green mb-2 text-sm md:text-base">Niveau KYC initial : L0</h3>
-                    <p className="text-xs md:text-sm text-galsen-blue">
-                      Après inscription, vous devrez compléter votre vérification KYC pour investir :
-                    </p>
-                    <ul className="text-xs md:text-sm text-galsen-blue mt-2 space-y-1">
-                      <li>• <strong>L1</strong> : CNI ou Passeport → Limite 500 000 FCFA/mois</li>
-                      <li>• <strong>L2</strong> : Documents supplémentaires → Limite 5 000 000 FCFA/mois</li>
-                    </ul>
-                  </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Date de création
+                          </label>
+                          <input
+                            type="date"
+                            name="foundedDate"
+                            value={formData.foundedDate}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Site web
+                          </label>
+                          <input
+                            type="url"
+                            name="websiteUrl"
+                            value={formData.websiteUrl}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            placeholder="https://www.exemple.sn"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Nom du représentant
+                          </label>
+                          <input
+                            type="text"
+                            name="representativeName"
+                            value={formData.representativeName}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            placeholder="Abdoulaye Diop"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Fonction du représentant
+                          </label>
+                          <input
+                            type="text"
+                            name="representativeTitle"
+                            value={formData.representativeTitle}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            placeholder="Gérant"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Nombre d'employés
+                          </label>
+                          <input
+                            type="number"
+                            name="employeeCount"
+                            value={formData.employeeCount}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            placeholder="15"
+                            min="0"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-galsen-blue mb-2">
+                            Chiffre d'affaires annuel (FCFA)
+                          </label>
+                          <input
+                            type="number"
+                            name="annualRevenue"
+                            value={formData.annualRevenue}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                            placeholder="50000000"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-galsen-blue mb-2">
+                          Description de l'entreprise
+                        </label>
+                        <textarea
+                          name="description"
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                          placeholder="Entreprise spécialisée dans les solutions fintech..."
+                          rows={4}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    // Champs Investor
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-galsen-blue mb-2">
+                          Secteur d'activité <span className="text-galsen-red">*</span>
+                        </label>
+                        <select
+                          name="occupation"
+                          value={formData.occupation}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                          required
+                        >
+                          <option value="">Sélectionnez un secteur</option>
+                          {sectors?.map(sector => (
+                            <option key={sector.id} value={sector.slug}>{sector.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-galsen-blue mb-2">
+                          Tranche de revenus annuels <span className="text-galsen-red">*</span>
+                        </label>
+                        <select
+                          name="incomeBracket"
+                          value={formData.incomeBracket}
+                          onChange={handleChange}
+                          className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
+                          required
+                        >
+                          <option value="LOW">Moins de 2 000 000 FCFA</option>
+                          <option value="MID">2 000 000 - 10 000 000 FCFA</option>
+                          <option value="HIGH">Plus de 10 000 000 FCFA</option>
+                        </select>
+                      </div>
+
+                      <div className="bg-galsen-green/5 border border-galsen-green/20 rounded-lg p-4 mt-6">
+                        <h3 className="font-medium text-galsen-green mb-2 text-sm md:text-base">Niveau KYC initial : L0</h3>
+                        <p className="text-xs md:text-sm text-galsen-blue">
+                          Après inscription, vous devrez compléter votre vérification KYC pour investir :
+                        </p>
+                        <ul className="text-xs md:text-sm text-galsen-blue mt-2 space-y-1">
+                          <li>• <strong>L1</strong> : CNI ou Passeport → Limite 500 000 FCFA/mois</li>
+                          <li>• <strong>L2</strong> : Documents supplémentaires → Limite 5 000 000 FCFA/mois</li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -376,6 +751,7 @@ export function RegisterInvestor() {
                     type="button"
                     onClick={handlePrev}
                     className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 border border-galsen-green/30 text-galsen-blue rounded-lg hover:bg-galsen-white transition-colors text-sm md:text-base"
+                    disabled={loading}
                   >
                     <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
                     <span className="hidden sm:inline">Précédent</span>
@@ -403,9 +779,17 @@ export function RegisterInvestor() {
                 ) : (
                   <button
                     type="submit"
-                    className="px-4 md:px-6 py-2 md:py-3 bg-galsen-green hover:bg-galsen-green/90 text-white font-medium rounded-lg transition-colors shadow-lg shadow-galsen-green/20 text-sm md:text-base"
+                    disabled={loading}
+                    className="px-4 md:px-6 py-2 md:py-3 bg-galsen-green hover:bg-galsen-green/90 text-white font-medium rounded-lg transition-colors shadow-lg shadow-galsen-green/20 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Créer mon compte
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Inscription...
+                      </span>
+                    ) : (
+                      'Créer mon compte'
+                    )}
                   </button>
                 )}
               </div>

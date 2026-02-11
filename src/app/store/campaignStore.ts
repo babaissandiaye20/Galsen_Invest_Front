@@ -1,0 +1,174 @@
+/**
+ * Store campagnes — Zustand
+ */
+import { create } from 'zustand';
+import type { Campaign, PaginatedData, PaginationParams, CreateCampaignRequest, RejectCampaignRequest } from '../models';
+import { campaignService, extractErrorMessage } from '../services';
+
+interface CampaignState {
+    campaigns: Campaign[];
+    myCampaigns: Campaign[];
+    pendingCampaigns: Campaign[];
+    currentCampaign: Campaign | null;
+    pagination: Omit<PaginatedData<Campaign>, 'content'> | null;
+    loading: boolean;
+    error: string | null;
+
+    fetchAll: (params?: PaginationParams) => Promise<void>;
+    fetchApproved: (params?: PaginationParams) => Promise<void>;
+    fetchById: (id: string) => Promise<void>;
+    search: (keyword: string, params?: PaginationParams) => Promise<void>;
+    fetchByCategory: (categoryId: string, params?: PaginationParams) => Promise<void>;
+    fetchMyCampaigns: (params?: PaginationParams) => Promise<void>;
+    fetchPendingReview: (params?: PaginationParams) => Promise<void>;
+    create: (data: CreateCampaignRequest) => Promise<Campaign>;
+    submit: (id: string) => Promise<void>;
+    adminApprove: (id: string) => Promise<void>;
+    adminReject: (id: string, data: RejectCampaignRequest) => Promise<void>;
+    clearError: () => void;
+}
+
+export const useCampaignStore = create<CampaignState>()((set) => ({
+    campaigns: [],
+    myCampaigns: [],
+    pendingCampaigns: [],
+    currentCampaign: null,
+    pagination: null,
+    loading: false,
+    error: null,
+
+    fetchAll: async (params) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.getAll(params);
+            const { content = [], ...pagination } = res.data ?? {};
+            set({ campaigns: content, pagination, loading: false });
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur chargement campagnes'), loading: false });
+        }
+    },
+
+    fetchApproved: async (params) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.getApproved(params);
+            const { content = [], ...pagination } = res.data ?? {};
+            set({ campaigns: content, pagination, loading: false });
+        } catch (err: unknown) {
+            console.error('❌ Erreur fetchApproved:', err);
+            set({ error: extractErrorMessage(err, 'Erreur chargement campagnes'), campaigns: [], loading: false });
+            // Rejeter pour permettre le .catch() dans le composant
+            throw err;
+        }
+    },
+
+    fetchById: async (id) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.getById(id);
+            set({ currentCampaign: res.data, loading: false });
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur chargement campagne'), loading: false });
+        }
+    },
+
+    search: async (keyword, params) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.search(keyword, params);
+            const { content = [], ...pagination } = res.data ?? {};
+            set({ campaigns: content, pagination, loading: false });
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur recherche campagnes'), loading: false });
+        }
+    },
+
+    fetchByCategory: async (categoryId, params) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.getByCategory(categoryId, params);
+            const { content = [], ...pagination } = res.data ?? {};
+            set({ campaigns: content, pagination, loading: false });
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur chargement campagnes par catégorie'), loading: false });
+        }
+    },
+
+    fetchMyCampaigns: async (params) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.getMyCampaigns(params);
+            const { content = [], ...pagination } = res.data ?? {};
+            set({ myCampaigns: content, pagination, loading: false });
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur chargement mes campagnes'), loading: false });
+        }
+    },
+
+    fetchPendingReview: async (params) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.getByStatus('REVIEW', params);
+            const { content = [], ...pagination } = res.data ?? {};
+            set({ pendingCampaigns: content, pagination, loading: false });
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur chargement campagnes en révision'), loading: false });
+        }
+    },
+
+    create: async (data) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.create(data);
+            set((state) => ({
+                myCampaigns: [res.data, ...state.myCampaigns],
+                loading: false,
+            }));
+            return res.data;
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur création campagne'), loading: false });
+            throw err;
+        }
+    },
+
+    submit: async (id) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await campaignService.submit(id);
+            set((state) => ({
+                myCampaigns: state.myCampaigns.map((c) => (c.id === id ? res.data : c)),
+                loading: false,
+            }));
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur soumission campagne'), loading: false });
+        }
+    },
+
+    adminApprove: async (id) => {
+        set({ loading: true, error: null });
+        try {
+            await campaignService.approve(id);
+            set((state) => ({
+                pendingCampaigns: state.pendingCampaigns.filter((c) => c.id !== id),
+                loading: false,
+            }));
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur approbation campagne'), loading: false });
+        }
+    },
+
+    adminReject: async (id, data) => {
+        set({ loading: true, error: null });
+        try {
+            await campaignService.reject(id, data);
+            set((state) => ({
+                pendingCampaigns: state.pendingCampaigns.filter((c) => c.id !== id),
+                loading: false,
+            }));
+        } catch (err: unknown) {
+            set({ error: extractErrorMessage(err, 'Erreur rejet campagne'), loading: false });
+        }
+    },
+
+    clearError: () => set({ error: null }),
+}));

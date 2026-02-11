@@ -5,6 +5,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://galsen-invest.online/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

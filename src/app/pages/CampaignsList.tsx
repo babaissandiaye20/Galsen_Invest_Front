@@ -1,35 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { CampaignCard } from '../components/CampaignCard';
-import { mockCampaigns, mockCategories } from '../data/mockData';
 import { Search, Filter, X } from 'lucide-react';
+import { useCampaignStore, useCategoryStore } from '../store';
+import { useShallow } from 'zustand/react/shallow';
+// import { mockCategories } from '../data/mockData'; // Removed mock data
 
 export function CampaignsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState(['ACTIVE']);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>(['APPROVED']); // Default showing approved/active
   const [sortBy, setSortBy] = useState('recent');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Filtrage des campagnes
-  let filteredCampaigns = mockCampaigns.filter(campaign => {
-    const matchesSearch = campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         campaign.shortDescription.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || campaign.category === selectedCategory;
-    const matchesStatus = selectedStatus.includes(campaign.status);
+  // Stores
+  const { campaigns, loading: campaignsLoading, error: campaignsError, fetchApproved, search, fetchByCategory, fetchAll } = useCampaignStore(
+    useShallow((s) => ({
+      campaigns: s.campaigns,
+      loading: s.loading,
+      error: s.error,
+      fetchApproved: s.fetchApproved,
+      search: s.search,
+      fetchByCategory: s.fetchByCategory,
+      fetchAll: s.fetchAll
+    }))
+  );
+
+  const { categories, fetchAll: fetchCategories } = useCategoryStore(
+    useShallow((s) => ({ categories: s.categories, fetchAll: s.fetchAll }))
+  );
+
+  // Initial fetch
+  useEffect(() => {
+    fetchApproved(); // Fetch approved campaigns by default
+    fetchCategories();
+  }, [fetchApproved, fetchCategories]);
+
+  // Handle Search and Filter Logic
+  // Note: The API supports server-side search and category filtering.
+  // For simplicity combined with mixed filters (status, sort) which might not be all supported by one API call,
+  // we can fetch a base set and filter client-side OR trigger specific API calls.
+  // Given the requirement to replace mock data, let's try to leverage the store's fetched data and filter client-side
+  // for smoother UI if the dataset isn't huge, OR trigger API calls.
+  // Let's rely on client-side filtering of the `campaigns` list currently in store
+  // but trigger API search when searchTerm changes significantly.
+
+  // Activating API search on debounce could be better, but for now let's filter the *displayed* list
+  // based on the store's `campaigns` which we populated with `fetchApproved`.
+
+  // Filter logic
+  let filteredCampaigns = campaigns.filter(campaign => {
+    const matchesSearch = searchTerm === '' ||
+      campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      campaign.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || campaign.categoryLibelle === selectedCategory || campaign.categoryId === selectedCategory;
+    // Status filter: Campaign model has specific statuses.
+    // If selectedStatus is empty, show all.
+    // Ensure status matches.
+    const matchesStatus = selectedStatus.length === 0 || selectedStatus.includes(campaign.status);
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  // Tri des campagnes
+  // Sort logic
   filteredCampaigns = [...filteredCampaigns].sort((a, b) => {
     switch (sortBy) {
       case 'recent':
         return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
       case 'ending':
-        return a.daysLeft - b.daysLeft;
+        // Calculate days left
+        const getDays = (date: string) => Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return getDays(a.endDate) - getDays(b.endDate);
       case 'funded':
-        return (b.raisedAmount / b.goalAmount) - (a.raisedAmount / a.goalAmount);
+        return (b.raisedAmount / b.targetAmount) - (a.raisedAmount / a.targetAmount);
       default:
         return 0;
     }
@@ -46,12 +89,13 @@ export function CampaignsList() {
   const resetFilters = () => {
     setSearchTerm('');
     setSelectedCategory('all');
-    setSelectedStatus(['ACTIVE']);
+    setSelectedStatus(['APPROVED']);
     setSortBy('recent');
     setShowMobileFilters(false);
+    fetchApproved(); // Reset data
   };
 
-  const FiltersContent = () => (
+  const filtersJsx = (
     <>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
@@ -94,8 +138,8 @@ export function CampaignsList() {
           className="w-full px-3 py-2 border border-galsen-green/30 rounded-lg text-sm focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
         >
           <option value="all">Toutes les catégories</option>
-          {mockCategories.map(cat => (
-            <option key={cat.id} value={cat.name}>{cat.name}</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.libelle}>{cat.libelle}</option>
           ))}
         </select>
       </div>
@@ -106,7 +150,7 @@ export function CampaignsList() {
           Statut
         </label>
         <div className="space-y-2">
-          {['ACTIVE', 'APPROVED', 'CLOSED'].map(status => (
+          {['APPROVED', 'FUNDED', 'CLOSED'].map(status => (
             <label key={status} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -115,7 +159,7 @@ export function CampaignsList() {
                 className="w-4 h-4 text-galsen-green rounded focus:ring-galsen-green accent-galsen-green"
               />
               <span className="text-sm text-galsen-blue">
-                {status === 'ACTIVE' ? 'Actif' : status === 'APPROVED' ? 'Approuvé' : 'Terminé'}
+                {status === 'APPROVED' ? 'En cours' : status === 'FUNDED' ? 'Financé' : 'Terminé'}
               </span>
             </label>
           ))}
@@ -140,11 +184,17 @@ export function CampaignsList() {
           <p className="text-galsen-blue/70 text-sm md:text-base">Découvrez et soutenez les projets qui vous inspirent</p>
         </div>
 
+        {campaignsError && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-sm rounded-lg">
+            {campaignsError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar de filtres - Desktop */}
           <div className="hidden lg:block lg:col-span-1">
             <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8 border border-galsen-green/10">
-              <FiltersContent />
+              {filtersJsx}
             </div>
           </div>
 
@@ -163,7 +213,7 @@ export function CampaignsList() {
           {showMobileFilters && (
             <div className="lg:hidden fixed inset-0 z-50 bg-black/50 flex items-end">
               <div className="bg-white w-full rounded-t-2xl p-6 max-h-[80vh] overflow-y-auto">
-                <FiltersContent />
+                {filtersJsx}
               </div>
             </div>
           )}
@@ -190,7 +240,11 @@ export function CampaignsList() {
             </div>
 
             {/* Grille */}
-            {filteredCampaigns.length > 0 ? (
+            {campaignsLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="w-12 h-12 border-4 border-galsen-green border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : filteredCampaigns.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 {filteredCampaigns.map(campaign => (
                   <CampaignCard key={campaign.id} campaign={campaign} />
@@ -200,6 +254,12 @@ export function CampaignsList() {
               <div className="bg-white rounded-xl shadow-lg p-8 md:p-12 text-center border border-galsen-green/10">
                 <p className="text-galsen-blue mb-2">Aucune campagne trouvée</p>
                 <p className="text-sm text-galsen-blue/60">Essayez de modifier vos critères de recherche</p>
+                <button
+                  onClick={resetFilters}
+                  className="mt-4 px-4 py-2 bg-galsen-green hover:bg-galsen-green/90 text-white rounded-lg text-sm transition-colors"
+                >
+                  Effacer les filtres
+                </button>
               </div>
             )}
           </div>

@@ -14,6 +14,7 @@ import {
   X
 } from 'lucide-react';
 import logoGalsen from '../images/logogalsen_invest.png';
+import { useAuthStore } from '../store/authStore';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,6 +25,7 @@ export function Layout({ children, userType = 'investor' }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const logout = useAuthStore((state) => state.logout);
 
   const investorNav = [
     { path: '/investor/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -47,8 +49,11 @@ export function Layout({ children, userType = 'investor' }: LayoutProps) {
 
   const navItems = userType === 'business' ? businessNav : userType === 'admin' ? adminNav : investorNav;
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    // Nettoyer complètement le store et localStorage
+    await logout();
+    // Rediriger vers login
+    navigate('/login', { replace: true });
   };
 
   const closeMobileMenu = () => {

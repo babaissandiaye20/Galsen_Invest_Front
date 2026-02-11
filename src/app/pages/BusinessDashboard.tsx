@@ -1,14 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
 import { ProgressBar } from '../components/ProgressBar';
-import { mockBusinessProfile, mockCampaigns } from '../data/mockData';
+import { mockCampaigns } from '../data/mockData';
 import { Target, DollarSign, Users, TrendingUp, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useProfileStore, useAuthStore } from '../store';
+import { useShallow } from 'zustand/react/shallow';
 
 export function BusinessDashboard() {
-  const profile = mockBusinessProfile;
   const [activeFilter, setActiveFilter] = useState('all');
+  
+  const { businessProfile, fetchBusinessProfile, loading, error } = useProfileStore(
+    useShallow((s) => ({
+      businessProfile: s.businessProfile,
+      fetchBusinessProfile: s.fetchBusinessProfile,
+      loading: s.loading,
+      error: s.error
+    }))
+  );
+
+  const { token, isAuthenticated } = useAuthStore(
+    useShallow((s) => ({ token: s.token, isAuthenticated: s.isAuthenticated }))
+  );
+
+  // Charger le profil business au montage
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      const timer = setTimeout(() => {
+        fetchBusinessProfile();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, token, fetchBusinessProfile]);
 
   // Simuler les campagnes de l'entreprise
   const myCampaigns = mockCampaigns.slice(0, 4).map((c, i) => ({
@@ -20,6 +45,42 @@ export function BusinessDashboard() {
     ? myCampaigns
     : myCampaigns.filter(c => c.status === activeFilter);
 
+  // Afficher un loader pendant le chargement
+  if (loading && !businessProfile) {
+    return (
+      <Layout userType="business">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Chargement de votre profil...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Afficher une erreur si le profil n'a pas pu être chargé
+  if (error && !businessProfile) {
+    return (
+      <Layout userType="business">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-500 mb-2">Erreur de chargement du profil</p>
+            <p className="text-gray-600 text-sm">{error}</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Si pas de profil, ne rien afficher
+  if (!businessProfile) {
+    return (
+      <Layout userType="business">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Aucun profil trouvé</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout userType="business">
       <div className="space-y-6 md:space-y-8">
@@ -27,14 +88,25 @@ export function BusinessDashboard() {
         <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-galsen-green/10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-3 md:gap-4">
-              <img
-                src={profile.logo}
-                alt={profile.companyName}
-                className="w-12 h-12 md:w-16 md:h-16 rounded-lg border-2 border-galsen-gold"
-              />
+              {businessProfile.logoUrl && (
+                <img
+                  src={businessProfile.logoUrl}
+                  alt={businessProfile.companyName}
+                  className="w-12 h-12 md:w-16 md:h-16 rounded-lg border-2 border-galsen-gold object-cover"
+                />
+              )}
+              {!businessProfile.logoUrl && (
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg border-2 border-galsen-gold bg-galsen-gold/10 flex items-center justify-center">
+                  <span className="text-xl md:text-2xl font-bold text-galsen-gold">
+                    {businessProfile.companyName?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div>
-                <h1 className="text-xl md:text-2xl font-bold text-galsen-blue">{profile.companyName}</h1>
-                <p className="text-sm md:text-base text-galsen-blue/70">{profile.tradeName} • {profile.legalForm}</p>
+                <h1 className="text-xl md:text-2xl font-bold text-galsen-blue">{businessProfile.companyName}</h1>
+                <p className="text-sm md:text-base text-galsen-blue/70">
+                  {businessProfile.tradeName && `${businessProfile.tradeName} • `}{businessProfile.legalForm}
+                </p>
               </div>
             </div>
             <Link
@@ -56,7 +128,7 @@ export function BusinessDashboard() {
               </div>
             </div>
             <p className="text-galsen-blue/70 text-xs md:text-sm mb-1">Campagnes actives</p>
-            <p className="text-xl md:text-2xl font-bold text-galsen-blue">{profile.activeCampaigns}</p>
+            <p className="text-xl md:text-2xl font-bold text-galsen-blue">{businessProfile.activeCampaigns || 0}</p>
           </div>
 
           {/* Total collecté */}
@@ -68,7 +140,7 @@ export function BusinessDashboard() {
             </div>
             <p className="text-galsen-blue/70 text-xs md:text-sm mb-1">Total collecté</p>
             <p className="text-xl md:text-2xl font-bold text-galsen-blue">
-              {new Intl.NumberFormat('fr-FR').format(profile.totalRaised)} FCFA
+              {new Intl.NumberFormat('fr-FR').format(businessProfile.totalRaised || 0)} FCFA
             </p>
           </div>
 
@@ -80,20 +152,20 @@ export function BusinessDashboard() {
               </div>
             </div>
             <p className="text-galsen-blue/70 text-xs md:text-sm mb-1">Investisseurs</p>
-            <p className="text-xl md:text-2xl font-bold text-galsen-blue">{profile.investorCount}</p>
+            <p className="text-xl md:text-2xl font-bold text-galsen-blue">{businessProfile.investorCount || 0}</p>
             <p className="text-xs text-galsen-blue/60 mt-1">sur toutes les campagnes</p>
           </div>
 
-          {/* Taux de réussite */}
+          {/* Nombre d'employés */}
           <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-galsen-green/10 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <div className="p-2 md:p-3 bg-galsen-green/10 rounded-lg">
                 <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-galsen-green" />
               </div>
             </div>
-            <p className="text-galsen-blue/70 text-xs md:text-sm mb-1">Taux de réussite</p>
-            <p className="text-xl md:text-2xl font-bold text-galsen-blue">{profile.successRate}%</p>
-            <p className="text-xs text-galsen-blue/60 mt-1">objectif moyen atteint</p>
+            <p className="text-galsen-blue/70 text-xs md:text-sm mb-1">Employés</p>
+            <p className="text-xl md:text-2xl font-bold text-galsen-blue">{businessProfile.employeeCount || 'N/A'}</p>
+            <p className="text-xs text-galsen-blue/60 mt-1">dans l'entreprise</p>
           </div>
         </div>
 
