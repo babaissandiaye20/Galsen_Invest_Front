@@ -37,8 +37,9 @@ export const campaignService = {
     },
 
     // 2.2 Lister toutes les campagnes
+    // Note: Cet endpoint retourne directement PaginatedData, pas { data: PaginatedData }
     getAll: (params?: PaginationParams) =>
-        apiGet<ApiResponse<PaginatedData<Campaign>>>('/campaign-service/api/v1/campaigns', { params }),
+        apiGet<PaginatedData<Campaign>>('/campaign-service/api/v1/campaigns', { params }),
 
     // 2.3 Campagne par ID
     getById: (id: string) =>

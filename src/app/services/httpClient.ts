@@ -41,6 +41,7 @@ const httpClient = ofetch.create({
             '/auth-service/api/auth/login',
             '/auth-service/api/otp/',
             '/campaign-service/api/v1/campaigns/approved',
+            '/campaign-service/api/v1/campaigns?', // Toutes les campagnes (avec params)
             '/campaign-service/api/v1/categories',
         ];
         

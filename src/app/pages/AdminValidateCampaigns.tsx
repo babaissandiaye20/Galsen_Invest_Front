@@ -1,34 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
-import { mockPendingCampaigns } from '../data/mockData';
 import { Eye, CheckCircle, XCircle, FileText } from 'lucide-react';
+import { useCampaignStore, useAuthStore } from '../store';
+import { useShallow } from 'zustand/react/shallow';
+import { campaignService } from '../services';
 
 export function AdminValidateCampaigns() {
-  const [campaigns, setCampaigns] = useState(mockPendingCampaigns);
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [processing, setProcessing] = useState(false);
   
-  const handleApprove = (id: string) => {
-    if (confirm('Voulez-vous approuver cette campagne ?')) {
-      setCampaigns(campaigns.filter(c => c.id !== id));
-      setSelectedCampaign(null);
+  const { token, isAuthenticated } = useAuthStore(
+    useShallow((s) => ({ token: s.token, isAuthenticated: s.isAuthenticated }))
+  );
+
+  const { campaigns, fetchAll, loading } = useCampaignStore(
+    useShallow((s) => ({
+      campaigns: s.campaigns,
+      fetchAll: s.fetchAll,
+      loading: s.loading
+    }))
+  );
+
+  // Charger toutes les campagnes au montage
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchAll({ page: 0, size: 100, sort: ['createdAt,DESC'] });
+    }
+  }, [isAuthenticated, token, fetchAll]);
+
+  // Filtrer uniquement les campagnes en révision (REVIEW, PENDING_REVIEW ou DRAFT)
+  const pendingCampaigns = campaigns.filter(c => 
+    c.status === 'REVIEW' || c.status === 'PENDING_REVIEW' || c.status === 'SUBMITTED' || c.status === 'DRAFT'
+  );
+
+  // Debug
+  useEffect(() => {
+    console.log('🔍 [Admin] Toutes les campagnes:', campaigns);
+    console.log('🔍 [Admin] Statuts disponibles:', [...new Set(campaigns.map(c => c.status))]);
+    console.log('🔍 [Admin] Détail des statuts:', campaigns.map(c => ({ title: c.title, status: c.status })));
+    console.log('🔍 [Admin] Campagnes en attente:', pendingCampaigns);
+  }, [campaigns, pendingCampaigns]);
+  
+  const handleApprove = async (id: string) => {
+    if (!confirm('Voulez-vous approuver cette campagne ?')) return;
+    
+    setProcessing(true);
+    try {
+      await campaignService.approve(id);
       alert('Campagne approuvée avec succès !');
+      setSelectedCampaign(null);
+      // Recharger les campagnes
+      fetchAll({ page: 0, size: 100, sort: ['createdAt,DESC'] });
+    } catch (error: any) {
+      alert('Erreur lors de l\'approbation : ' + (error.message || 'Erreur inconnue'));
+    } finally {
+      setProcessing(false);
     }
   };
   
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string) => {
     if (!rejectionReason.trim()) {
       alert('Veuillez indiquer le motif du rejet');
       return;
     }
     
-    setCampaigns(campaigns.filter(c => c.id !== id));
-    setSelectedCampaign(null);
-    setShowRejectModal(false);
-    setRejectionReason('');
-    alert('Campagne rejetée. L\'entreprise a été notifiée.');
+    setProcessing(true);
+    try {
+      await campaignService.reject(id, { reason: rejectionReason });
+      alert('Campagne rejetée. L\'entreprise a été notifiée.');
+      setSelectedCampaign(null);
+      setShowRejectModal(false);
+      setRejectionReason('');
+      // Recharger les campagnes
+      fetchAll({ page: 0, size: 100, sort: ['createdAt,DESC'] });
+    } catch (error: any) {
+      alert('Erreur lors du rejet : ' + (error.message || 'Erreur inconnue'));
+    } finally {
+      setProcessing(false);
+    }
   };
   
   return (
@@ -44,11 +96,16 @@ export function AdminValidateCampaigns() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-4">
               <h2 className="font-semibold text-gray-900 mb-4">
-                Campagnes en révision ({campaigns.length})
+                Campagnes en révision ({pendingCampaigns.length})
               </h2>
               
-              <div className="space-y-3">
-                {campaigns.map(campaign => (
+              {loading ? (
+                <p className="text-gray-500 text-sm">Chargement...</p>
+              ) : pendingCampaigns.length === 0 ? (
+                <p className="text-gray-500 text-sm">Aucune campagne en attente de validation</p>
+              ) : (
+                <div className="space-y-3">
+                  {pendingCampaigns.map(campaign => (
                   <button
                     key={campaign.id}
                     onClick={() => setSelectedCampaign(campaign)}
@@ -59,23 +116,17 @@ export function AdminValidateCampaigns() {
                     }`}
                   >
                     <h3 className="font-medium text-gray-900 mb-1">{campaign.title}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{campaign.businessName}</p>
+                    <p className="text-sm text-gray-600 mb-2">{campaign.categoryLibelle}</p>
                     <div className="flex items-center justify-between">
                       <StatusBadge status={campaign.status as any} />
                       <span className="text-xs text-gray-500">
-                        {new Date(campaign.submittedDate).toLocaleDateString('fr-FR')}
+                        {new Date(campaign.createdAt).toLocaleDateString('fr-FR')}
                       </span>
                     </div>
                   </button>
                 ))}
-                
-                {campaigns.length === 0 && (
-                  <div className="text-center py-12">
-                    <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">Aucune campagne en attente</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
           
@@ -88,7 +139,7 @@ export function AdminValidateCampaigns() {
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
                       {selectedCampaign.title}
                     </h2>
-                    <p className="text-gray-600">{selectedCampaign.businessName}</p>
+                    <p className="text-gray-600">{selectedCampaign.categoryLibelle}</p>
                   </div>
                   <StatusBadge status={selectedCampaign.status as any} />
                 </div>
@@ -149,8 +200,8 @@ export function AdminValidateCampaigns() {
                     <h3 className="font-semibold text-gray-900 mb-3">Description du projet</h3>
                     <div className="bg-gray-50 rounded-lg p-4">
                       <p className="text-gray-700">
-                        Ce projet vise à développer une solution innovante dans le secteur {selectedCampaign.category.toLowerCase()}. 
-                        L'entreprise {selectedCampaign.businessName} souhaite lever {new Intl.NumberFormat('fr-FR').format(selectedCampaign.goalAmount)} FCFA 
+                        Ce projet vise à développer une solution innovante dans le secteur {selectedCampaign.categoryLibelle}. 
+                        L'entreprise {selectedCampaign.categoryLibelle} souhaite lever {new Intl.NumberFormat('fr-FR').format(selectedCampaign.goalAmount)} FCFA 
                         pour financer cette initiative qui aura un impact significatif sur le marché local.
                       </p>
                     </div>
