@@ -26,7 +26,12 @@ const httpClient = ofetch.create({
         
         // Toujours demander du JSON
         options.headers.set('Accept', 'application/json');
-        options.headers.set('Content-Type', 'application/json');
+        
+        // Ne pas forcer Content-Type si c'est un FormData (multipart/form-data)
+        // Le navigateur définira automatiquement le bon Content-Type avec boundary
+        if (!(options.body instanceof FormData)) {
+            options.headers.set('Content-Type', 'application/json');
+        }
         
         // Liste des endpoints publics qui ne nécessitent pas de token
         const publicEndpoints = [
@@ -36,6 +41,7 @@ const httpClient = ofetch.create({
             '/auth-service/api/auth/login',
             '/auth-service/api/otp/',
             '/campaign-service/api/v1/campaigns/approved',
+            '/campaign-service/api/v1/categories',
         ];
         
         // Vérifier si l'endpoint est public

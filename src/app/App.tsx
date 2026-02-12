@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
 import { ChooseUserType } from './pages/ChooseUserType';
 import { RegisterInvestor } from './pages/RegisterInvestor';
@@ -10,6 +11,8 @@ import { InvestorWallet } from './pages/InvestorWallet';
 import { CampaignsList } from './pages/CampaignsList';
 import { CampaignDetail } from './pages/CampaignDetail';
 import { BusinessDashboard } from './pages/BusinessDashboard';
+import { BusinessProfile } from './pages/BusinessProfile';
+import { BusinessCampaigns } from './pages/BusinessCampaigns';
 import { CreateCampaign } from './pages/CreateCampaign';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminValidateCampaigns } from './pages/AdminValidateCampaigns';
@@ -19,8 +22,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Page de connexion par défaut */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Page d'accueil */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         
         {/* Routes d'inscription */}
@@ -42,10 +45,10 @@ export default function App() {
         
         {/* Routes Entreprise */}
         <Route path="/business/dashboard" element={<BusinessDashboard />} />
-        <Route path="/business/campaigns" element={<BusinessDashboard />} />
+        <Route path="/business/campaigns" element={<BusinessCampaigns />} />
         <Route path="/business/campaigns/new" element={<CreateCampaign />} />
         <Route path="/business/campaigns/:id" element={<BusinessDashboard />} />
-        <Route path="/business/profile" element={<BusinessDashboard />} />
+        <Route path="/business/profile" element={<BusinessProfile />} />
         
         {/* Routes Admin */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />

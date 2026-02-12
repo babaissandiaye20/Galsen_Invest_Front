@@ -20,11 +20,16 @@ export const useCategoryStore = create<CategoryState>()((set) => ({
     error: null,
 
     fetchAll: async () => {
+        console.log('🔄 [categoryStore] Début fetchAll');
         set({ loading: true, error: null });
         try {
-            const res = await categoryService.getAll();
-            set({ categories: res.data ?? [], loading: false });
+            // L'API retourne directement un tableau, pas { data: [] }
+            const categories = await categoryService.getAll();
+            console.log('✅ [categoryStore] Réponse API:', categories);
+            console.log('📦 [categoryStore] Catégories reçues:', categories);
+            set({ categories: categories ?? [], loading: false });
         } catch (err: unknown) {
+            console.error('❌ [categoryStore] Erreur:', err);
             set({ error: extractErrorMessage(err, 'Erreur chargement catégories'), loading: false });
         }
     },

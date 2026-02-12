@@ -95,6 +95,16 @@ export function RegisterInvestor() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Empêcher la touche Entrée de soumettre le formulaire avant l'étape 4
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === 'Enter' && currentStep < 4) {
+      e.preventDefault();
+      console.log('Entrée bloquée - Étape', currentStep);
+      // Passer à l'étape suivante au lieu de soumettre
+      handleNext();
+    }
+  };
+
   const handleNext = () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
@@ -107,6 +117,13 @@ export function RegisterInvestor() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // IMPORTANT: Bloquer la soumission si on n'est pas à l'étape 4
+    if (currentStep < 4) {
+      console.log('Tentative de soumission bloquée - Étape', currentStep);
+      return; // Ne rien faire si pas à l'étape 4
+    }
+    
     clearAuthError();
     setLocalError('');
 
@@ -272,7 +289,7 @@ export function RegisterInvestor() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
               {/* Étape 1: Identité ou Entreprise */}
               {currentStep === 1 && (
                 <div className="space-y-4">

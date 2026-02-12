@@ -95,12 +95,18 @@ export const useCampaignStore = create<CampaignState>()((set) => ({
     },
 
     fetchMyCampaigns: async (params) => {
+        console.log('🔄 [campaignStore] fetchMyCampaigns avec params:', params);
         set({ loading: true, error: null });
         try {
-            const res = await campaignService.getMyCampaigns(params);
-            const { content = [], ...pagination } = res.data ?? {};
+            // L'API retourne directement PaginatedData, pas { data: PaginatedData }
+            const paginatedData = await campaignService.getMyCampaigns(params);
+            console.log('✅ [campaignStore] Réponse API:', paginatedData);
+            const { content = [], ...pagination } = paginatedData ?? {};
+            console.log('📦 [campaignStore] Campagnes extraites:', content);
+            console.log('📦 [campaignStore] Pagination:', pagination);
             set({ myCampaigns: content, pagination, loading: false });
         } catch (err: unknown) {
+            console.error('❌ [campaignStore] Erreur:', err);
             set({ error: extractErrorMessage(err, 'Erreur chargement mes campagnes'), loading: false });
         }
     },

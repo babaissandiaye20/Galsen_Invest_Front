@@ -39,13 +39,25 @@ export function CreateCampaign() {
     useShallow((s) => ({ create: s.create, loading: s.loading, error: s.error }))
   );
 
-  const { categories, fetchAll: fetchCategories } = useCategoryStore(
-    useShallow((s) => ({ categories: s.categories, fetchAll: s.fetchAll }))
+  const { categories, fetchAll: fetchCategories, loading: categoriesLoading, error: categoriesError } = useCategoryStore(
+    useShallow((s) => ({ 
+      categories: s.categories, 
+      fetchAll: s.fetchAll,
+      loading: s.loading,
+      error: s.error
+    }))
   );
 
   useEffect(() => {
+    console.log('🎯 [CreateCampaign] Chargement des catégories...');
     fetchCategories();
   }, [fetchCategories]);
+
+  useEffect(() => {
+    console.log('📊 [CreateCampaign] Catégories:', categories);
+    console.log('⏳ [CreateCampaign] Loading:', categoriesLoading);
+    console.log('❌ [CreateCampaign] Error:', categoriesError);
+  }, [categories, categoriesLoading, categoriesError]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

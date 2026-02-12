@@ -2,15 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
 import { ProgressBar } from '../components/ProgressBar';
-import { mockCampaigns } from '../data/mockData';
 import { Target, DollarSign, Users, TrendingUp, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useProfileStore, useAuthStore } from '../store';
+import { useProfileStore, useAuthStore, useCampaignStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
+import { campaignService } from '../services';
 
 export function BusinessDashboard() {
-  const [activeFilter, setActiveFilter] = useState('all');
+  console.log('🎯 [BusinessDashboard] Début du rendu');
   
+  const [activeFilter, setActiveFilter] = useState<'all' | 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'FUNDED' | 'CLOSED'>('all');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [sortDirection, setSortDirection] = useState<'ASC' | 'DESC'>('DESC');
+  
+  console.log('🎯 [BusinessDashboard] États initialisés');
+  
+  console.log('🎯 [BusinessDashboard] Avant useProfileStore');
   const { businessProfile, fetchBusinessProfile, loading, error } = useProfileStore(
     useShallow((s) => ({
       businessProfile: s.businessProfile,
@@ -19,31 +26,83 @@ export function BusinessDashboard() {
       error: s.error
     }))
   );
+  console.log('🎯 [BusinessDashboard] Après useProfileStore', { businessProfile, loading, error });
 
+  console.log('🎯 [BusinessDashboard] Avant useAuthStore');
   const { token, isAuthenticated } = useAuthStore(
     useShallow((s) => ({ token: s.token, isAuthenticated: s.isAuthenticated }))
   );
 
-  // Charger le profil business au montage
+  // État pour les statistiques
+  const [stats, setStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  console.log('🎯 [BusinessDashboard] Après useAuthStore', { hasToken: !!token, isAuthenticated });
+
+  // Store des campagnes
+  console.log('🎯 [BusinessDashboard] Avant useCampaignStore');
+  const { campaigns, pagination, fetchMyCampaigns, loading: campaignsLoading } = useCampaignStore(
+    useShallow((s) => ({
+      campaigns: s.myCampaigns, // ✅ Utiliser myCampaigns au lieu de campaigns
+      pagination: s.pagination,
+      fetchMyCampaigns: s.fetchMyCampaigns,
+      loading: s.loading
+    }))
+  );
+  console.log('🎯 [BusinessDashboard] Après useCampaignStore', { campaigns, campaignsLoading });
+
+  // Filtrer les campagnes depuis l'API
+  const filteredCampaigns = activeFilter === 'all'
+    ? campaigns
+    : campaigns.filter(c => c.status === activeFilter);
+
+  // Charger le profil business et les statistiques au montage
   useEffect(() => {
     if (isAuthenticated && token) {
       const timer = setTimeout(() => {
         fetchBusinessProfile();
+        loadStats();
       }, 100);
       
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated, token, fetchBusinessProfile]);
 
-  // Simuler les campagnes de l'entreprise
-  const myCampaigns = mockCampaigns.slice(0, 4).map((c, i) => ({
-    ...c,
-    status: i === 0 ? 'ACTIVE' : i === 1 ? 'REVIEW' : i === 2 ? 'DRAFT' : 'CLOSED'
-  }));
+  // Charger les statistiques
+  const loadStats = async () => {
+    setLoadingStats(true);
+    try {
+      const data = await campaignService.getBusinessStats();
+      console.log('📊 Statistiques business:', data);
+      setStats(data);
+    } catch (error) {
+      console.error('❌ Erreur chargement stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
-  const filteredCampaigns = activeFilter === 'all'
-    ? myCampaigns
-    : myCampaigns.filter(c => c.status === activeFilter);
+  // Charger les campagnes
+  useEffect(() => {
+    console.log('🎯 [BusinessDashboard] Chargement campagnes...', { isAuthenticated, hasToken: !!token });
+    if (isAuthenticated && token) {
+      fetchMyCampaigns({
+        page: currentPage,
+        size: 10,
+        sort: [`createdAt,${sortDirection}`]
+      });
+    }
+  }, [isAuthenticated, token, currentPage, sortDirection, fetchMyCampaigns]);
+
+  // Debug des campagnes
+  useEffect(() => {
+    console.log('📊 [BusinessDashboard] État campagnes:');
+    console.log('   - Campagnes:', campaigns);
+    console.log('   - Nombre:', campaigns?.length);
+    console.log('   - Loading:', campaignsLoading);
+    console.log('   - Pagination:', pagination);
+    console.log('   - Filtre actif:', activeFilter);
+    console.log('   - Campagnes filtrées:', filteredCampaigns);
+  }, [campaigns, campaignsLoading, pagination, activeFilter, filteredCampaigns]);
 
   // Afficher un loader pendant le chargement
   if (loading && !businessProfile) {
@@ -169,180 +228,110 @@ export function BusinessDashboard() {
           </div>
         </div>
 
-        {/* Section Mes campagnes */}
+        {/* Graphiques et métriques supplémentaires */}
         <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-galsen-green/10">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <h2 className="text-lg md:text-xl font-bold text-galsen-blue">Mes campagnes</h2>
-            <Link
-              to="/business/campaigns/new"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-galsen-gold hover:bg-galsen-gold/90 text-galsen-blue font-medium rounded-lg transition-colors shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="text-sm md:text-base">Nouvelle campagne</span>
-            </Link>
-          </div>
-
-          {/* Onglets de filtrage - Scrollable sur mobile */}
-          <div className="flex gap-2 mb-6 border-b border-galsen-green/20 overflow-x-auto pb-2">
-            {[
-              { id: 'all', label: 'Toutes' },
-              { id: 'DRAFT', label: 'Brouillon' },
-              { id: 'REVIEW', label: 'En révision' },
-              { id: 'ACTIVE', label: 'Actif' },
-              { id: 'CLOSED', label: 'Terminé' }
-            ].map(filter => (
-              <button
-                key={filter.id}
-                onClick={() => setActiveFilter(filter.id)}
-                className={`px-4 py-2 font-medium transition-colors whitespace-nowrap text-sm md:text-base ${
-                  activeFilter === filter.id
-                    ? 'border-b-2 border-galsen-gold text-galsen-gold'
-                    : 'text-galsen-blue/70 hover:text-galsen-blue'
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Version mobile - Cards */}
-          <div className="md:hidden space-y-4">
-            {filteredCampaigns.map(campaign => {
-              const percentage = (campaign.raisedAmount / campaign.goalAmount) * 100;
-
-              return (
-                <div key={campaign.id} className="p-4 border border-galsen-green/20 rounded-lg bg-galsen-white">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-galsen-blue mb-1">{campaign.title}</h3>
-                      <p className="text-xs text-galsen-blue/70">{campaign.category}</p>
-                    </div>
-                    <StatusBadge status={campaign.status as any} />
-                  </div>
-
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-galsen-green">
-                        {percentage.toFixed(0)}%
-                      </span>
-                      <span className="text-xs text-galsen-blue/70">
-                        {new Intl.NumberFormat('fr-FR').format(campaign.goalAmount)} FCFA
-                      </span>
-                    </div>
-                    <div className="w-full bg-galsen-green/10 rounded-full h-2">
-                      <div
-                        className="bg-galsen-gold h-2 rounded-full transition-all"
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center text-xs text-galsen-blue/70">
-                    <span>Fin: {new Date(campaign.endDate).toLocaleDateString('fr-FR')}</span>
-                    <Link
-                      to={`/business/campaigns/${campaign.id}`}
-                      className="text-galsen-gold hover:text-galsen-gold/80 font-medium"
-                    >
-                      Voir →
-                    </Link>
-                  </div>
+          <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-6">Aperçu de l'activité</h2>
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Performance des campagnes */}
+            <div className="p-4 bg-galsen-green/5 rounded-lg">
+              <h3 className="font-semibold text-galsen-blue mb-4">Performance globale</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-galsen-blue/70">Taux de réussite moyen</span>
+                  <span className="font-bold text-galsen-green">
+                    {businessProfile.totalRaised && businessProfile.activeCampaigns 
+                      ? '75%' 
+                      : '0%'}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Version desktop - Table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-galsen-green/20">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Titre</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Statut</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Progression</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Objectif</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Date de fin</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-galsen-blue">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCampaigns.map(campaign => {
-                  const percentage = (campaign.raisedAmount / campaign.goalAmount) * 100;
-
-                  return (
-                    <tr key={campaign.id} className="border-b border-galsen-green/10 hover:bg-galsen-white transition-colors">
-                      <td className="py-4 px-4">
-                        <div>
-                          <p className="font-medium text-galsen-blue">{campaign.title}</p>
-                          <p className="text-sm text-galsen-blue/70">{campaign.category}</p>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <StatusBadge status={campaign.status as any} />
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="w-32">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium text-galsen-green">
-                              {percentage.toFixed(0)}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-galsen-green/10 rounded-full h-2">
-                            <div
-                              className="bg-galsen-gold h-2 rounded-full transition-all"
-                              style={{ width: `${Math.min(percentage, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="text-sm">
-                          <p className="font-medium text-galsen-green">
-                            {new Intl.NumberFormat('fr-FR').format(campaign.raisedAmount)} FCFA
-                          </p>
-                          <p className="text-galsen-blue/70">
-                            / {new Intl.NumberFormat('fr-FR').format(campaign.goalAmount)} FCFA
-                          </p>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-galsen-blue/70">
-                        {new Date(campaign.endDate).toLocaleDateString('fr-FR')}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <Link
-                            to={`/business/campaigns/${campaign.id}`}
-                            className="text-galsen-gold hover:text-galsen-gold/80 text-sm font-medium"
-                          >
-                            Voir
-                          </Link>
-                          {campaign.status === 'DRAFT' && (
-                            <>
-                              <span className="text-galsen-green/20">|</span>
-                              <button className="text-galsen-gold hover:text-galsen-gold/80 text-sm font-medium">
-                                Modifier
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredCampaigns.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-galsen-blue mb-2">Aucune campagne trouvée</p>
-              <p className="text-sm text-galsen-blue/60">
-                {activeFilter === 'all'
-                  ? 'Créez votre première campagne pour commencer'
-                  : 'Aucune campagne avec ce statut'}
-              </p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-galsen-blue/70">Montant moyen levé</span>
+                  <span className="font-bold text-galsen-blue">
+                    {businessProfile.activeCampaigns 
+                      ? new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format((businessProfile.totalRaised || 0) / businessProfile.activeCampaigns)
+                      : '0'} FCFA
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-galsen-blue/70">Investissement moyen</span>
+                  <span className="font-bold text-galsen-blue">
+                    {businessProfile.investorCount 
+                      ? new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format((businessProfile.totalRaised || 0) / businessProfile.investorCount)
+                      : '0'} FCFA
+                  </span>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Actions rapides */}
+            <div className="p-4 bg-galsen-gold/5 rounded-lg">
+              <h3 className="font-semibold text-galsen-blue mb-4">Actions rapides</h3>
+              <div className="space-y-3">
+                <Link
+                  to="/business/campaigns/new"
+                  className="block w-full px-4 py-3 bg-galsen-gold hover:bg-galsen-gold/90 text-galsen-blue font-medium rounded-lg transition-colors text-center"
+                >
+                  <Plus className="w-5 h-5 inline mr-2" />
+                  Créer une campagne
+                </Link>
+                <Link
+                  to="/business/campaigns"
+                  className="block w-full px-4 py-3 border border-galsen-green hover:bg-galsen-green/5 text-galsen-green font-medium rounded-lg transition-colors text-center"
+                >
+                  Voir mes campagnes
+                </Link>
+                <Link
+                  to="/business/profile"
+                  className="block w-full px-4 py-3 border border-galsen-blue hover:bg-galsen-blue/5 text-galsen-blue font-medium rounded-lg transition-colors text-center"
+                >
+                  Modifier mon profil
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Métriques d'évolution */}
+        <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-galsen-green/10">
+          <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-6">Évolution de votre activité</h2>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Croissance */}
+            <div className="text-center p-6 bg-gradient-to-br from-galsen-green/10 to-galsen-green/5 rounded-lg">
+              <TrendingUp className="w-8 h-8 text-galsen-green mx-auto mb-3" />
+              <p className="text-sm text-galsen-blue/70 mb-2">Croissance ce mois</p>
+              <p className="text-3xl font-bold text-galsen-green">+0%</p>
+              <p className="text-xs text-galsen-blue/60 mt-2">par rapport au mois dernier</p>
+            </div>
+
+            {/* Objectif annuel */}
+            <div className="text-center p-6 bg-gradient-to-br from-galsen-gold/10 to-galsen-gold/5 rounded-lg">
+              <Target className="w-8 h-8 text-galsen-gold mx-auto mb-3" />
+              <p className="text-sm text-galsen-blue/70 mb-2">Objectif annuel</p>
+              <p className="text-3xl font-bold text-galsen-gold">
+                {businessProfile.totalRaised ? '0%' : '0%'}
+              </p>
+              <p className="text-xs text-galsen-blue/60 mt-2">de l'objectif atteint</p>
+            </div>
+
+            {/* Engagement */}
+            <div className="text-center p-6 bg-gradient-to-br from-galsen-blue/10 to-galsen-blue/5 rounded-lg">
+              <Users className="w-8 h-8 text-galsen-blue mx-auto mb-3" />
+              <p className="text-sm text-galsen-blue/70 mb-2">Taux d'engagement</p>
+              <p className="text-3xl font-bold text-galsen-blue">0%</p>
+              <p className="text-xs text-galsen-blue/60 mt-2">investisseurs actifs</p>
+            </div>
+          </div>
+
+          {/* Message d'encouragement */}
+          <div className="mt-6 p-4 bg-galsen-green/5 border border-galsen-green/20 rounded-lg">
+            <p className="text-sm text-galsen-blue text-center">
+              💡 <strong>Astuce :</strong> Créez votre première campagne pour commencer à collecter des fonds et développer votre entreprise !
+            </p>
+          </div>
+        </div>
+
       </div>
     </Layout>
   );

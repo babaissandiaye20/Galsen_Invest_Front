@@ -10,8 +10,9 @@ export const categoryService = {
         apiPost<ApiResponse<Category>>('/campaign-service/api/v1/categories', data),
 
     // 2.19 Lister les catégories
+    // Note: Cet endpoint retourne directement un tableau, pas { data: [] }
     getAll: () =>
-        apiGet<ApiResponse<Category[]>>('/campaign-service/api/v1/categories'),
+        apiGet<Category[]>('/campaign-service/api/v1/categories'),
 
     // 2.20 Catégorie par ID
     getById: (id: string) =>

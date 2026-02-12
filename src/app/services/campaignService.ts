@@ -69,8 +69,9 @@ export const campaignService = {
         }),
 
     // 2.8 Mes campagnes (Business)
+    // Note: Cet endpoint retourne directement PaginatedData, pas { data: PaginatedData }
     getMyCampaigns: (params?: PaginationParams) =>
-        apiGet<ApiResponse<PaginatedData<Campaign>>>('/campaign-service/api/v1/campaigns/my-campaigns', { params }),
+        apiGet<PaginatedData<Campaign>>('/campaign-service/api/v1/campaigns/my-campaigns', { params }),
 
     // 2.9 Modifier une campagne
     update: (id: string, data: UpdateCampaignRequest) =>
@@ -79,6 +80,10 @@ export const campaignService = {
     // 2.10 Soumettre pour révision
     submit: (id: string) =>
         apiPost<ApiResponse<Campaign>>(`/campaign-service/api/v1/campaigns/${id}/submit`),
+
+    // Statistiques business
+    getBusinessStats: () =>
+        apiGet<any>('/campaign-service/api/v1/statistics/business/me'),
 
     // 2.11 Upload cover image
     uploadCover: (id: string, coverImage: File) => {

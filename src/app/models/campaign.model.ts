@@ -67,11 +67,13 @@ export interface CampaignPhoto {
 
 export interface Category {
   id: string;
+  code: string;
   libelle: string;
   description: string;
 }
 
 export interface CreateCategoryRequest {
+  code: string;
   libelle: string;
   description: string;
 }
