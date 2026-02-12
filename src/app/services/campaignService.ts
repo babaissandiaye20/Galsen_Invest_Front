@@ -46,8 +46,9 @@ export const campaignService = {
         apiGet<ApiResponse<Campaign>>(`/campaign-service/api/v1/campaigns/${id}`),
 
     // 2.4 Campagnes approuvées
+    // Note: Cet endpoint retourne directement PaginatedData, pas { data: PaginatedData }
     getApproved: (params?: PaginationParams) =>
-        apiGet<ApiResponse<PaginatedData<Campaign>>>('/campaign-service/api/v1/campaigns/approved', { params }),
+        apiGet<PaginatedData<Campaign>>('/campaign-service/api/v1/campaigns/approved', { params }),
 
     // 2.5 Campagnes par catégorie
     getByCategory: (categoryId: string, params?: PaginationParams) =>

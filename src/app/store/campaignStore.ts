@@ -56,23 +56,31 @@ export const useCampaignStore = create<CampaignState>()((set) => ({
     fetchApproved: async (params) => {
         set({ loading: true, error: null });
         try {
-            const res = await campaignService.getApproved(params);
-            const { content = [], ...pagination } = res.data ?? {};
+            // L'API retourne directement PaginatedData, pas { data: PaginatedData }
+            const paginatedData = await campaignService.getApproved(params);
+            console.log('✅ [campaignStore] Campagnes approuvées:', paginatedData);
+            const { content = [], ...pagination } = paginatedData ?? {};
             set({ campaigns: content, pagination, loading: false });
         } catch (err: unknown) {
             console.error('❌ Erreur fetchApproved:', err);
             set({ error: extractErrorMessage(err, 'Erreur chargement campagnes'), campaigns: [], loading: false });
-            // Rejeter pour permettre le .catch() dans le composant
             throw err;
         }
     },
 
     fetchById: async (id) => {
+        console.log('🔄 [campaignStore] fetchById:', id);
         set({ loading: true, error: null });
         try {
             const res = await campaignService.getById(id);
-            set({ currentCampaign: res.data, loading: false });
+            console.log('✅ [campaignStore] Réponse getById:', res);
+            console.log('📦 [campaignStore] res.data:', res.data);
+            // Vérifier si l'API retourne directement la campagne ou { data: campaign }
+            const campaign = res.data ?? res;
+            console.log('📦 [campaignStore] campaign:', campaign);
+            set({ currentCampaign: campaign, loading: false });
         } catch (err: unknown) {
+            console.error('❌ [campaignStore] Erreur fetchById:', err);
             set({ error: extractErrorMessage(err, 'Erreur chargement campagne'), loading: false });
         }
     },
