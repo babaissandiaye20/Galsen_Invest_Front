@@ -43,6 +43,8 @@ export type {
     Wallet,
     Transaction,
     DepositRequest,
+    DepositSession,
+    PaymentMethodCode,
     WithdrawalStatus,
     Withdrawal,
     CreateWithdrawalRequest,

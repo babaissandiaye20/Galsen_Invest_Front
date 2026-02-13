@@ -31,8 +31,23 @@ export interface Transaction {
 
 // ─── Deposit ─────────────────────────────────────────────────────────────────
 
+export type PaymentMethodCode = 'STRIPE' | 'WAVE' | 'ORANGE_MONEY';
+
 export interface DepositRequest {
   amount: number;
+  paymentMethodCode: PaymentMethodCode;
+}
+
+export interface DepositSession {
+  transactionId: string | null;
+  sessionId: string;
+  sessionReference: string;
+  checkoutUrl: string | null;
+  clientSecret: string;
+  stripePublicKey: string;
+  amount: number;
+  currency: string;
+  message: string;
 }
 
 // ─── Withdrawals (Retraits) ──────────────────────────────────────────────────

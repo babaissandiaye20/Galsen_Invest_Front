@@ -74,6 +74,14 @@ export function getUserInfoFromToken(token: string | null): JwtUserInfo {
   return { email, name, initials };
 }
 
+/** Extrait l'ID utilisateur (claim 'sub') depuis le JWT Keycloak. */
+export function getUserIdFromToken(token: string | null): string | null {
+  if (!token) return null;
+  const payload = parseJwtPayload(token);
+  if (!payload || typeof payload.sub !== 'string') return null;
+  return payload.sub;
+}
+
 /** Vérifie si le token JWT est expiré. */
 export function isTokenExpired(token: string): boolean {
   const payload = parseJwtPayload(token);

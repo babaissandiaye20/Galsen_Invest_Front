@@ -9,6 +9,7 @@ import type {
     Wallet,
     Transaction,
     DepositRequest,
+    DepositSession,
     OwnerType,
 } from '../models';
 
@@ -17,9 +18,9 @@ export const walletService = {
     getMyWallet: () =>
         apiGet<ApiResponse<Wallet>>('/investment-service/api/wallets/me'),
 
-    // 3.7 Déposer de l'argent
+    // 3.7 Déposer de l'argent — retourne une session Stripe avec checkoutUrl
     deposit: (data: DepositRequest) =>
-        apiPost<ApiResponse<unknown>>('/investment-service/api/wallets/me/deposit', data),
+        apiPost<ApiResponse<DepositSession>>('/investment-service/api/wallets/me/deposit', data),
 
     // 3.8 Mes transactions
     getMyTransactions: (params?: PaginationParams) =>

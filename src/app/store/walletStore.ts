@@ -2,7 +2,7 @@
  * Store wallet — Zustand
  */
 import { create } from 'zustand';
-import type { Wallet, Transaction, PaginatedData, PaginationParams, DepositRequest } from '../models';
+import type { Wallet, Transaction, PaginatedData, PaginationParams, DepositRequest, DepositSession } from '../models';
 import { walletService, extractErrorMessage } from '../services';
 
 interface WalletState {
@@ -14,7 +14,7 @@ interface WalletState {
 
     fetchWallet: () => Promise<void>;
     fetchTransactions: (params?: PaginationParams) => Promise<void>;
-    deposit: (data: DepositRequest) => Promise<void>;
+    deposit: (data: DepositRequest) => Promise<DepositSession>;
     clearError: () => void;
 }
 
@@ -49,10 +49,12 @@ export const useWalletStore = create<WalletState>()((set) => ({
     deposit: async (data) => {
         set({ loading: true, error: null });
         try {
-            await walletService.deposit(data);
+            const res = await walletService.deposit(data);
             set({ loading: false });
+            return res.data;
         } catch (err: unknown) {
             set({ error: extractErrorMessage(err, 'Erreur dépôt'), loading: false });
+            throw err;
         }
     },
 

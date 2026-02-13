@@ -54,7 +54,9 @@ export const useKycStore = create<KycState>()((set) => ({
                 loading: false,
             }));
         } catch (err: unknown) {
-            set({ error: extractErrorMessage(err, 'Erreur upload document'), loading: false });
+            const msg = extractErrorMessage(err, 'Erreur upload document');
+            set({ error: msg, loading: false });
+            throw err; // Re-throw pour que le composant puisse aussi réagir
         }
     },
 
@@ -92,6 +94,7 @@ export const useKycStore = create<KycState>()((set) => ({
             }));
         } catch (err: unknown) {
             set({ error: extractErrorMessage(err, 'Erreur approbation document'), loading: false });
+            throw err;
         }
     },
 
@@ -105,6 +108,7 @@ export const useKycStore = create<KycState>()((set) => ({
             }));
         } catch (err: unknown) {
             set({ error: extractErrorMessage(err, 'Erreur rejet document'), loading: false });
+            throw err;
         }
     },
 

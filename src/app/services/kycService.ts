@@ -15,10 +15,13 @@ export const kycService = {
     // 1.15 Upload document KYC (multipart/form-data)
     upload: (userId: string, documentType: KycDocumentType, file: File) => {
         const formData = new FormData();
+        formData.append('file', file);
         formData.append('userId', userId);
         formData.append('documentType', documentType);
-        formData.append('file', file);
-        return apiPost<ApiResponse<KycDocument>>('/auth-service/api/v1/kyc/documents/upload', formData);
+        return apiPost<ApiResponse<KycDocument>>(
+            '/auth-service/api/v1/kyc/documents/upload',
+            formData,
+        );
     },
 
     // 1.16 Mes documents KYC

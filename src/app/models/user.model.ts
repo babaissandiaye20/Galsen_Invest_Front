@@ -5,15 +5,20 @@
 // ─── User (info de base dans les profils) ────────────────────────────────────
 
 export interface UserInfo {
+  id: string;
+  username: string;
   email: string;
-  phone: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  first_name: string;
+  last_name: string;
+  enabled: boolean;
+  email_verified: boolean;
 }
 
 // ─── Investor Profile ────────────────────────────────────────────────────────
 
 export interface InvestorProfile {
   id: string;
+  odoo: string;
   investorType: 'INDIVIDUAL' | 'INSTITUTIONAL';
   firstName: string;
   lastName: string;
@@ -29,11 +34,12 @@ export interface InvestorProfile {
   occupation: string | null;
   incomeBracket: 'LOW' | 'MID' | 'HIGH' | 'VERY_HIGH' | null;
   pep: boolean;
-  monthlyInvestmentCap: number;
-  lifetimeInvestmentCap: number;
+  idIssuingCountryName: string | null;
+  monthlyInvestmentCap: number | null;
+  lifetimeInvestmentCap: number | null;
   totalInvested: number;
-  remainingMonthlyCapacity: number;
-  remainingLifetimeCapacity: number;
+  remainingMonthlyCapacity: number | null;
+  remainingLifetimeCapacity: number | null;
   bio: string | null;
   user: UserInfo;
 }
@@ -127,4 +133,7 @@ export interface KycDocument {
   rejectionReason: string | null;
   processedAt: string | null;
   createdAt: string;
+  // Champs optionnels — le backend peut les inclure dans la réponse pending
+  userName?: string;
+  userEmail?: string;
 }

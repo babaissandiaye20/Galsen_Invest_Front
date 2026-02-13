@@ -1,15 +1,40 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
-import { mockPendingCampaigns, mockPendingDocuments, mockCampaigns } from '../data/mockData';
-import { Users, FileText, CheckSquare, DollarSign, ArrowRight } from 'lucide-react';
+import { mockPendingCampaigns, mockCampaigns } from '../data/mockData';
+import { Users, FileText, CheckSquare, DollarSign, ArrowRight, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useKycStore } from '../store';
+import { useShallow } from 'zustand/react/shallow';
+
+// Labels lisibles pour les types de documents
+const docTypeLabels: Record<string, string> = {
+  ID_CARD_FRONT: 'CNI — Recto',
+  ID_CARD_BACK: 'CNI — Verso',
+  PASSPORT: 'Passeport',
+  SELFIE: 'Selfie',
+  INCOME_PROOF: 'Revenus',
+  ADDRESS_PROOF: 'Domicile',
+};
 
 export function AdminDashboard() {
+  const { pendingDocuments, pagination, loading: kycLoading, adminFetchPending } = useKycStore(
+    useShallow((s) => ({
+      pendingDocuments: s.pendingDocuments,
+      pagination: s.pagination,
+      loading: s.loading,
+      adminFetchPending: s.adminFetchPending,
+    }))
+  );
+
+  useEffect(() => {
+    adminFetchPending({ page: 0, size: 5, sort: 'createdAt,ASC' });
+  }, [adminFetchPending]);
+
   const totalUsers = 247; // Mock data
   const totalInvested = mockCampaigns.reduce((sum, c) => sum + c.raisedAmount, 0);
   const pendingCampaignsCount = mockPendingCampaigns.length;
-  const pendingDocumentsCount = mockPendingDocuments.length;
+  const pendingDocumentsCount = pagination?.totalElements ?? pendingDocuments.length;
 
   return (
     <Layout userType="admin">
@@ -145,24 +170,32 @@ export function AdminDashboard() {
               </Link>
             </div>
 
-            {pendingDocumentsCount > 0 ? (
+            {kycLoading && !pendingDocuments.length ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-galsen-green" />
+              </div>
+            ) : pendingDocuments.length > 0 ? (
               <div className="space-y-3">
-                {mockPendingDocuments.map(doc => (
+                {pendingDocuments.map(doc => (
                   <div key={doc.id} className="p-3 md:p-4 border border-galsen-green/20 rounded-lg hover:border-galsen-gold transition-colors">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h3 className="font-medium text-galsen-blue mb-1 text-sm md:text-base">{doc.userName}</h3>
-                        <p className="text-xs md:text-sm text-galsen-blue/70">{doc.userEmail}</p>
+                        <h3 className="font-medium text-galsen-blue mb-1 text-sm md:text-base">
+                          {doc.userName || doc.userId.slice(0, 8) + '…'}
+                        </h3>
+                        {doc.userEmail && (
+                          <p className="text-xs md:text-sm text-galsen-blue/70">{doc.userEmail}</p>
+                        )}
                       </div>
-                      <StatusBadge status={doc.status as any} />
+                      <StatusBadge status={doc.status} />
                     </div>
                     <div className="flex items-center justify-between mt-3">
                       <div className="text-xs md:text-sm">
                         <span className="text-galsen-blue/70">Type: </span>
-                        <span className="font-medium text-galsen-blue">{doc.documentType}</span>
+                        <span className="font-medium text-galsen-blue">{docTypeLabels[doc.type] || doc.type}</span>
                       </div>
                       <Link
-                        to={`/admin/kyc/${doc.id}`}
+                        to="/admin/kyc"
                         className="inline-flex items-center gap-1 text-xs md:text-sm text-galsen-gold hover:text-galsen-gold/80 font-medium"
                       >
                         Vérifier
