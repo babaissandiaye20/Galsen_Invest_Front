@@ -4,12 +4,12 @@ import { StatusBadge } from '../components/StatusBadge';
 import { ProgressBar } from '../components/ProgressBar';
 import { useCampaignStore, useAuthStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
-import { Plus, Send, Archive } from 'lucide-react';
+import { Plus, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { campaignService } from '../services';
 
 export function BusinessCampaigns() {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'FUNDED' | 'CLOSED'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'DRAFT' | 'REVIEW' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'FUNDED' | 'CLOSED'>('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [sortDirection, setSortDirection] = useState<'ASC' | 'DESC'>('DESC');
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -93,13 +93,13 @@ export function BusinessCampaigns() {
         {/* Section principale */}
         <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 border border-galsen-green/10">
           {/* Contrôles de tri et filtrage */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            {/* Onglets de filtrage */}
-            <div className="flex gap-2 border-b border-galsen-green/20 overflow-x-auto pb-2">
+          <div className="flex flex-col gap-4 mb-6">
+            {/* Onglets de filtrage — grille responsive */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:flex md:flex-wrap gap-1.5 md:gap-2 border-b border-galsen-green/20 pb-3">
               {[
                 { id: 'all', label: 'Toutes' },
                 { id: 'DRAFT', label: 'Brouillon' },
-                { id: 'PENDING_REVIEW', label: 'En révision' },
+                { id: 'REVIEW', label: 'En révision' },
                 { id: 'APPROVED', label: 'Approuvé' },
                 { id: 'ACTIVE', label: 'Actif' },
                 { id: 'FUNDED', label: 'Financé' },
@@ -108,10 +108,10 @@ export function BusinessCampaigns() {
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id as any)}
-                  className={`px-4 py-2 font-medium transition-colors whitespace-nowrap text-sm ${
+                  className={`px-2.5 py-1.5 md:px-4 md:py-2 font-medium transition-colors text-xs md:text-sm rounded-lg md:rounded-none md:border-b-2 ${
                     activeFilter === filter.id
-                      ? 'border-b-2 border-galsen-gold text-galsen-gold'
-                      : 'text-galsen-blue/70 hover:text-galsen-blue'
+                      ? 'bg-galsen-gold/10 md:bg-transparent border-galsen-gold text-galsen-gold md:border-b-2'
+                      : 'text-galsen-blue/70 hover:text-galsen-blue border-transparent'
                   }`}
                 >
                   {filter.label}
@@ -120,13 +120,15 @@ export function BusinessCampaigns() {
             </div>
 
             {/* Tri par date */}
-            <button
-              onClick={() => setSortDirection(sortDirection === 'DESC' ? 'ASC' : 'DESC')}
-              className="px-4 py-2 border border-galsen-green/30 rounded-lg hover:bg-galsen-green/5 transition-colors text-sm flex items-center gap-2"
-            >
-              <span>Date de création</span>
-              <span>{sortDirection === 'DESC' ? '↓' : '↑'}</span>
-            </button>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setSortDirection(sortDirection === 'DESC' ? 'ASC' : 'DESC')}
+                className="px-4 py-2 border border-galsen-green/30 rounded-lg hover:bg-galsen-green/5 transition-colors text-sm flex items-center gap-2"
+              >
+                <span>Date de création</span>
+                <span>{sortDirection === 'DESC' ? '↓' : '↑'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Liste des campagnes */}
@@ -153,12 +155,74 @@ export function BusinessCampaigns() {
               <p className="text-galsen-blue/70">Chargement des campagnes...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Vue mobile — cartes */}
+            <div className="md:hidden space-y-3">
+              {filteredCampaigns.map(campaign => {
+                const percentage = campaign.fundingPercentage ?? 0;
+                return (
+                  <div key={campaign.id} className="border border-galsen-green/10 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-galsen-blue truncate">{campaign.title}</p>
+                        <p className="text-xs text-galsen-blue/60">{campaign.categoryLibelle}</p>
+                      </div>
+                      <StatusBadge status={campaign.status as any} />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-galsen-blue/60">Progression</span>
+                        <span className="text-sm font-medium text-galsen-green">{percentage.toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-galsen-green/10 rounded-full h-2">
+                        <div
+                          className="bg-galsen-gold h-2 rounded-full transition-all"
+                          style={{ width: `${Math.min(percentage, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-galsen-blue">
+                          {new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(campaign.targetAmount)} FCFA
+                        </p>
+                        <p className="text-xs text-galsen-blue/60">
+                          Fin: {new Date(campaign.endDate).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {campaign.status === 'DRAFT' && (
+                          <button
+                            onClick={() => handleSubmit(campaign.id)}
+                            disabled={submitting === campaign.id}
+                            className="p-2 bg-galsen-green hover:bg-galsen-green/90 text-white rounded-lg transition-colors disabled:opacity-50"
+                            title="Soumettre pour révision"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
+                        <Link
+                          to={`/business/campaigns/${campaign.id}`}
+                          className="px-3 py-2 border border-galsen-blue/30 hover:bg-galsen-blue/5 text-galsen-blue rounded-lg transition-colors text-sm"
+                        >
+                          Voir
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Vue desktop — table */}
+            <div className="hidden md:block">
               <table className="w-full">
                 <thead className="bg-galsen-green/5">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-galsen-blue">Campagne</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-galsen-blue hidden md:table-cell">Statut</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-galsen-blue">Statut</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-galsen-blue">Progression</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-galsen-blue">Objectif</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-galsen-blue">Actions</th>
@@ -167,16 +231,13 @@ export function BusinessCampaigns() {
                 <tbody className="divide-y divide-galsen-green/10">
                   {filteredCampaigns.map(campaign => {
                     const percentage = campaign.fundingPercentage ?? 0;
-                    
                     return (
                       <tr key={campaign.id} className="hover:bg-galsen-green/5 transition-colors">
                         <td className="px-4 py-4">
-                          <div>
-                            <p className="font-medium text-galsen-blue">{campaign.title}</p>
-                            <p className="text-sm text-galsen-blue/60">{campaign.categoryLibelle}</p>
-                          </div>
+                          <p className="font-medium text-galsen-blue">{campaign.title}</p>
+                          <p className="text-sm text-galsen-blue/60">{campaign.categoryLibelle}</p>
                         </td>
-                        <td className="px-4 py-4 hidden md:table-cell">
+                        <td className="px-4 py-4">
                           <StatusBadge status={campaign.status as any} />
                         </td>
                         <td className="px-4 py-4">
@@ -210,7 +271,7 @@ export function BusinessCampaigns() {
                                 title="Soumettre pour révision"
                               >
                                 <Send className="w-4 h-4" />
-                                <span className="hidden sm:inline">Publier</span>
+                                Publier
                               </button>
                             )}
                             <Link
@@ -227,16 +288,17 @@ export function BusinessCampaigns() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
 
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between pt-6 border-t border-galsen-green/10 mt-6">
-              <p className="text-sm text-galsen-blue/70">
-                Page {pagination.pageNumber + 1} sur {pagination.totalPages}
-                <span className="ml-2">({pagination.totalElements} campagnes au total)</span>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-galsen-green/10 mt-6">
+              <p className="text-sm text-galsen-blue/70 text-center sm:text-left">
+                Page {pagination.pageNumber + 1}/{pagination.totalPages}
+                <span className="ml-1">({pagination.totalElements} total)</span>
               </p>
-              
+
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}

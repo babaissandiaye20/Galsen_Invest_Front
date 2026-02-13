@@ -1,40 +1,20 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
+import { getUserRole, getDashboardRoute } from '../config/jwt';
 import logoGalsen from '../images/logogalsen_invest.png';
-
-/** Décode le payload d'un JWT (sans vérification de signature, côté client uniquement). */
-function parseJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const base64 = token.split('.')[1];
-    return JSON.parse(atob(base64));
-  } catch {
-    return null;
-  }
-}
-
-/** Extrait les rôles Keycloak depuis le JWT. */
-function getRolesFromToken(token: string): string[] {
-  const payload = parseJwtPayload(token);
-  if (!payload) return [];
-  const roles = (payload as { realm_access?: { roles?: string[] } }).realm_access?.roles ?? [];
-  return roles;
-}
-
-/** Détermine la route de redirection selon les rôles. */
-function getDashboardRoute(roles: string[]): string {
-  if (roles.includes('ADMIN')) return '/admin/dashboard';
-  if (roles.includes('BUSINESS')) return '/business/dashboard';
-  return '/investor/dashboard';
-}
 
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // URL d'origine si redirigé par ProtectedRoute
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
   const { login, loading, error, clearError } = useAuthStore(
     useShallow((s) => ({ login: s.login, token: s.token, loading: s.loading, error: s.error, clearError: s.clearError }))
@@ -46,8 +26,10 @@ export function Login() {
     try {
       await login({ username: email, password });
       const token = useAuthStore.getState().token;
-      const roles = token ? getRolesFromToken(token) : [];
-      navigate(getDashboardRoute(roles));
+      const role = getUserRole(token);
+      // Si l'utilisateur venait d'une page protégée, on le renvoie là-bas
+      const redirectTo = from || getDashboardRoute(role);
+      navigate(redirectTo, { replace: true });
     } catch {
       // Error is already set in the store
     }
