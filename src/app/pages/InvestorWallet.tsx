@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
-import { Wallet, Download, ArrowUpCircle, ArrowDownCircle, X, CreditCard, Loader2 } from 'lucide-react';
+import { StripeEmbeddedCheckoutForm } from '../components/StripePaymentForm';
+import { Wallet, Download, ArrowUpCircle, ArrowDownCircle, X, CreditCard, Loader2, ArrowLeft } from 'lucide-react';
 import {
   Table,
   TableHeader,
@@ -13,7 +14,9 @@ import {
 import { useWalletStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
 import type { PaymentMethodCode } from '../models';
+import type { DepositSession } from '../models';
 
 // ─── Méthodes de paiement disponibles ────────────────────────────────────────
 const PAYMENT_METHODS: {
@@ -56,11 +59,13 @@ export function InvestorWallet() {
   const [selectedType, setSelectedType] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
-  // Modal recharge — étape 1 : saisie
+  // Modal recharge — étape 1 : saisie, étape 2 : paiement Stripe
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [depositStep, setDepositStep] = useState<'amount' | 'payment'>('amount');
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodCode>('STRIPE');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositLoading, setDepositLoading] = useState(false);
+  const [depositSession, setDepositSession] = useState<DepositSession | null>(null);
 
 
   const { wallet, transactions, fetchWallet, fetchTransactions, deposit, loading, error } = useWalletStore(
@@ -104,11 +109,9 @@ export function InvestorWallet() {
     setDepositLoading(true);
     try {
       const session = await deposit({ amount, paymentMethodCode: selectedMethod });
-      // Ouvrir Stripe dans un nouvel onglet — on reste sur la page wallet
-      const url = session.checkoutUrl ?? `https://checkout.stripe.com/pay/${session.sessionReference}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
-      closeModal();
-      toast.success('Page de paiement ouverte dans un nouvel onglet.');
+      // Passer à l'étape 2 avec le formulaire Stripe embarqué
+      setDepositSession(session);
+      setDepositStep('payment');
     } catch {
       toast.error(error || 'Erreur lors de la création de la session de paiement.');
     } finally {
@@ -116,10 +119,34 @@ export function InvestorWallet() {
     }
   };
 
+  const handlePaymentSuccess = () => {
+    toast.success('Paiement réussi ! Votre wallet sera crédité sous peu.');
+    // Rafraîchir le wallet et les transactions après un délai
+    setTimeout(() => {
+      fetchWallet();
+      fetchTransactions();
+      closeModal();
+    }, 2000);
+  };
+
+  const handlePaymentError = (message: string) => {
+    toast.error(message);
+  };
+
   const closeModal = () => {
     setShowDepositModal(false);
     setDepositAmount('');
+    setDepositStep('amount');
+    setDepositSession(null);
   };
+
+  // Instance Stripe chargée dynamiquement avec la clé publique du backend
+  const stripePromise = useMemo(() => {
+    if (depositSession?.stripePublicKey) {
+      return loadStripe(depositSession.stripePublicKey);
+    }
+    return null;
+  }, [depositSession?.stripePublicKey]);
 
   const handleWithdraw = () => {
     toast.info('Les retraits seront bientôt disponibles.');
@@ -359,12 +386,24 @@ export function InvestorWallet() {
 
       {/* ── Modal Recharge ── */}
       {showDepositModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+          <div className={`bg-white rounded-2xl w-full shadow-2xl my-auto ${depositStep === 'payment' ? 'max-w-2xl' : 'max-w-md'}`}>
 
             {/* Header */}
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-galsen-blue">Recharger mon wallet</h3>
+              <div className="flex items-center gap-2">
+                {depositStep === 'payment' && (
+                  <button
+                    onClick={() => { setDepositStep('amount'); setDepositSession(null); }}
+                    className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                )}
+                <h3 className="text-xl font-bold text-galsen-blue">
+                  {depositStep === 'amount' ? 'Recharger mon wallet' : 'Paiement sécurisé'}
+                </h3>
+              </div>
               <button
                 onClick={closeModal}
                 className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
@@ -373,88 +412,117 @@ export function InvestorWallet() {
               </button>
             </div>
 
-            <div className="p-5 space-y-5">
-              {/* Méthodes de paiement */}
-              <div>
-                <p className="text-sm font-medium text-galsen-blue mb-3">Moyen de paiement</p>
-                <div className="space-y-2">
-                  {PAYMENT_METHODS.map((method) => (
-                    <button
-                      key={method.code}
-                      type="button"
-                      disabled={!method.available}
-                      onClick={() => method.available && setSelectedMethod(method.code)}
-                      className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all
-                        ${!method.available ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-galsen-green'}
-                        ${selectedMethod === method.code && method.available ? 'border-galsen-green bg-galsen-green/5' : method.color}`}
-                    >
-                      <span className="text-2xl w-8 text-center">{method.logo}</span>
-                      <div className="flex-1 text-left">
-                        <p className="font-medium text-galsen-blue text-sm">{method.label}</p>
-                        <p className="text-xs text-galsen-blue/60">{method.description}</p>
-                      </div>
-                      {!method.available && (
-                        <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                          Bientôt disponible
-                        </span>
-                      )}
-                      {method.available && selectedMethod === method.code && (
-                        <div className="w-5 h-5 rounded-full bg-galsen-green flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-white" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {/* ── Étape 1 : Choix méthode + montant ── */}
+            {depositStep === 'amount' && (
+              <>
+                <div className="p-5 space-y-5">
+                  {/* Méthodes de paiement */}
+                  <div>
+                    <p className="text-sm font-medium text-galsen-blue mb-3">Moyen de paiement</p>
+                    <div className="space-y-2">
+                      {PAYMENT_METHODS.map((method) => (
+                        <button
+                          key={method.code}
+                          type="button"
+                          disabled={!method.available}
+                          onClick={() => method.available && setSelectedMethod(method.code)}
+                          className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all
+                            ${!method.available ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-galsen-green'}
+                            ${selectedMethod === method.code && method.available ? 'border-galsen-green bg-galsen-green/5' : method.color}`}
+                        >
+                          <span className="text-2xl w-8 text-center">{method.logo}</span>
+                          <div className="flex-1 text-left">
+                            <p className="font-medium text-galsen-blue text-sm">{method.label}</p>
+                            <p className="text-xs text-galsen-blue/60">{method.description}</p>
+                          </div>
+                          {!method.available && (
+                            <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                              Bientôt disponible
+                            </span>
+                          )}
+                          {method.available && selectedMethod === method.code && (
+                            <div className="w-5 h-5 rounded-full bg-galsen-green flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full bg-white" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              {/* Montant */}
-              <div>
-                <label className="block text-sm font-medium text-galsen-blue mb-2">
-                  Montant (minimum {new Intl.NumberFormat('fr-FR').format(MIN_AMOUNT)} FCFA)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={MIN_AMOUNT}
-                    step="500"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                    placeholder="Ex: 5000"
-                    className="w-full px-4 py-3 pr-16 border border-gray-300 rounded-xl focus:ring-2 focus:ring-galsen-green focus:border-transparent"
+                  {/* Montant */}
+                  <div>
+                    <label className="block text-sm font-medium text-galsen-blue mb-2">
+                      Montant (minimum {new Intl.NumberFormat('fr-FR').format(MIN_AMOUNT)} FCFA)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={MIN_AMOUNT}
+                        step="500"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value)}
+                        placeholder="Ex: 5000"
+                        className="w-full px-4 py-3 pr-16 border border-gray-300 rounded-xl focus:ring-2 focus:ring-galsen-green focus:border-transparent"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">
+                        FCFA
+                      </span>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      {[5000, 10000, 25000, 50000].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setDepositAmount(String(v))}
+                          className="flex-1 py-1.5 text-xs border border-galsen-green/30 text-galsen-green rounded-lg hover:bg-galsen-green/5 transition-colors font-medium"
+                        >
+                          {new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(v)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 border-t border-gray-100">
+                  <button
+                    onClick={handleDepositSubmit}
+                    disabled={depositLoading || !depositAmount || Number(depositAmount) < MIN_AMOUNT}
+                    className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-galsen-green hover:bg-galsen-green/90 disabled:opacity-60 text-white font-medium rounded-xl transition-colors"
+                  >
+                    {depositLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
+                    {depositLoading ? 'Préparation du paiement...' : 'Continuer vers le paiement'}
+                  </button>
+                  <p className="text-xs text-center text-gray-400 mt-3">
+                    Paiement sécurisé par Stripe
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* ── Étape 2 : Stripe Embedded Checkout ── */}
+            {depositStep === 'payment' && depositSession && stripePromise && (
+              <div className="p-4 sm:p-6">
+                {/* Résumé du montant */}
+                <div className="mb-4 p-3 bg-galsen-green/5 border border-galsen-green/20 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-galsen-blue/70">Montant à recharger</span>
+                    <span className="text-lg font-bold text-galsen-blue">
+                      {new Intl.NumberFormat('fr-FR').format(Number(depositAmount))} FCFA
+                    </span>
+                  </div>
+                </div>
+
+                {/* EmbeddedCheckout — iframe Stripe qui gère tout le formulaire */}
+                <div className="w-full">
+                  <StripeEmbeddedCheckoutForm
+                    stripePromise={stripePromise}
+                    clientSecret={depositSession.clientSecret}
+                    onComplete={handlePaymentSuccess}
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">
-                    FCFA
-                  </span>
-                </div>
-                <div className="flex gap-2 mt-2">
-                  {[5000, 10000, 25000, 50000].map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setDepositAmount(String(v))}
-                      className="flex-1 py-1.5 text-xs border border-galsen-green/30 text-galsen-green rounded-lg hover:bg-galsen-green/5 transition-colors font-medium"
-                    >
-                      {new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(v)}
-                    </button>
-                  ))}
                 </div>
               </div>
-            </div>
-
-            <div className="p-5 border-t border-gray-100">
-              <button
-                onClick={handleDepositSubmit}
-                disabled={depositLoading || !depositAmount || Number(depositAmount) < MIN_AMOUNT}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-galsen-green hover:bg-galsen-green/90 disabled:opacity-60 text-white font-medium rounded-xl transition-colors"
-              >
-                {depositLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
-                {depositLoading ? 'Création de la session...' : 'Payer maintenant'}
-              </button>
-              <p className="text-xs text-center text-gray-400 mt-3">
-                La page de paiement s'ouvrira dans un nouvel onglet
-              </p>
-            </div>
+            )}
           </div>
         </div>
       )}
