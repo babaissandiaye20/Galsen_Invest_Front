@@ -7,18 +7,21 @@ import { investmentService, extractErrorMessage } from '../services';
 
 interface InvestmentState {
     investments: Investment[];
+    campaignInvestments: Investment[];
     pagination: Omit<PaginatedData<Investment>, 'content'> | null;
     loading: boolean;
     error: string | null;
 
     fetchByInvestor: (investorProfileId: string, params?: PaginationParams) => Promise<void>;
-    invest: (data: CreateInvestmentRequest) => Promise<void>;
+    fetchByCampaign: (campaignId: string, params?: PaginationParams) => Promise<void>;
+    invest: (data: CreateInvestmentRequest) => Promise<Investment>;
     cancel: (id: string, reason?: string) => Promise<void>;
     clearError: () => void;
 }
 
 export const useInvestmentStore = create<InvestmentState>()((set) => ({
     investments: [],
+    campaignInvestments: [],
     pagination: null,
     loading: false,
     error: null,
@@ -32,8 +35,19 @@ export const useInvestmentStore = create<InvestmentState>()((set) => ({
         } catch (err: unknown) {
             console.error('❌ Erreur fetchByInvestor:', err);
             set({ error: extractErrorMessage(err, 'Erreur chargement investissements'), investments: [], loading: false });
-            // Rejeter pour permettre le .catch() dans le composant
             throw err;
+        }
+    },
+
+    fetchByCampaign: async (campaignId, params) => {
+        set({ loading: true, error: null });
+        try {
+            const res = await investmentService.getByCampaign(campaignId, params);
+            const { content = [], ...pagination } = res.data ?? {};
+            set({ campaignInvestments: content, pagination, loading: false });
+        } catch (err: unknown) {
+            console.error('❌ Erreur fetchByCampaign:', err);
+            set({ error: extractErrorMessage(err, 'Erreur chargement investissements campagne'), campaignInvestments: [], loading: false });
         }
     },
 
@@ -41,9 +55,15 @@ export const useInvestmentStore = create<InvestmentState>()((set) => ({
         set({ loading: true, error: null });
         try {
             const res = await investmentService.create(data);
-            set((state) => ({ investments: [res.data, ...state.investments], loading: false }));
+            set((state) => ({
+                investments: [res.data, ...state.investments],
+                campaignInvestments: [res.data, ...state.campaignInvestments],
+                loading: false,
+            }));
+            return res.data;
         } catch (err: unknown) {
             set({ error: extractErrorMessage(err, "Erreur lors de l'investissement"), loading: false });
+            throw err;
         }
     },
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
-import { ProgressBar } from '../components/ProgressBar';
+import { FundingProgress } from '../components/FundingProgress';
 import { StatusBadge } from '../components/StatusBadge';
 import { CampaignCard } from '../components/CampaignCard';
 import { useCampaignStore, useInvestmentStore } from '../store';
@@ -14,14 +14,26 @@ import {
   FileText,
   Image as ImageIcon,
   TrendingUp,
-  Bell
+  Bell,
+  CreditCard,
+  MessageSquare
 } from 'lucide-react';
-import type { CampaignStatus } from '../models'; // Ensure correct import
+import { toast } from 'sonner';
+import type { CampaignStatus, PaymentMethodCode } from '../models';
+
+// Méthodes de paiement disponibles
+const PAYMENT_METHODS: { code: PaymentMethodCode; label: string; logo: string; available: boolean }[] = [
+  { code: 'STRIPE', label: 'Carte bancaire', logo: '💳', available: true },
+  { code: 'WAVE', label: 'Wave', logo: '🌊', available: false },
+  { code: 'ORANGE_MONEY', label: 'Orange Money', logo: '🟠', available: false },
+];
 
 export function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState('description');
   const [investmentAmount, setInvestmentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodCode>('STRIPE');
+  const [investmentNotes, setInvestmentNotes] = useState('');
 
   // Store hooks
   const { currentCampaign, loading, error, fetchById, fetchByCategory, campaigns } = useCampaignStore(
@@ -35,19 +47,23 @@ export function CampaignDetail() {
     }))
   );
 
-  const { createInvestment, loading: investmentLoading } = useInvestmentStore(
+  const { createInvestment, investmentLoading, campaignInvestments, fetchByCampaign, investmentError } = useInvestmentStore(
     useShallow((state) => ({
       createInvestment: state.invest,
-      loading: state.loading,
+      investmentLoading: state.loading,
+      campaignInvestments: state.campaignInvestments,
+      fetchByCampaign: state.fetchByCampaign,
+      investmentError: state.error,
     }))
   );
 
-  // Fetch campaign on mount
+  // Fetch campaign + ses investissements au chargement
   useEffect(() => {
     if (id) {
       fetchById(id);
+      fetchByCampaign(id, { size: 20 });
     }
-  }, [id, fetchById]);
+  }, [id, fetchById, fetchByCampaign]);
 
   // Fetch similar campaigns when currentCampaign is loaded
   useEffect(() => {
@@ -76,9 +92,6 @@ export function CampaignDetail() {
     );
   }
 
-  // Derived values
-  const percentage = (currentCampaign.raisedAmount / currentCampaign.targetAmount) * 100;
-
   // Similar campaigns: filter out current one
   const similarCampaigns = campaigns
     .filter(c => c.id !== currentCampaign.id && c.status === 'APPROVED')
@@ -96,17 +109,26 @@ export function CampaignDetail() {
   const daysLeft = calculateDaysLeft(currentCampaign.endDate);
 
   const handleInvest = async () => {
+    const amount = Number(investmentAmount);
+    if (!amount || amount < minInvestment) {
+      toast.error(`Le montant minimum est de ${new Intl.NumberFormat('fr-FR').format(minInvestment)} ${currentCampaign.devise}`);
+      return;
+    }
     try {
       await createInvestment({
         campaignId: currentCampaign.id,
-        amount: Number(investmentAmount),
+        amount,
+        paymentMethodCode: paymentMethod,
+        notes: investmentNotes || undefined,
       });
-      alert(`Félicitations ! Vous avez investi ${investmentAmount} FCFA dans la campagne "${currentCampaign.title}"`);
-      // Refresh campaign data to show updated raisedAmount
+      toast.success(`Investissement de ${new Intl.NumberFormat('fr-FR').format(amount)} ${currentCampaign.devise} effectué !`);
+      // Rafraîchir les données de la campagne + la liste des investissements
       fetchById(currentCampaign.id);
+      fetchByCampaign(currentCampaign.id, { size: 20 });
       setInvestmentAmount('');
-    } catch (err) {
-      alert("Erreur lors de l'investissement. Veuillez vérifier votre solde ou réessayer.");
+      setInvestmentNotes('');
+    } catch {
+      toast.error("Erreur lors de l'investissement. Vérifiez votre solde ou réessayez.");
     }
   };
 
@@ -233,11 +255,58 @@ export function CampaignDetail() {
                 {activeTab === 'investments' && (
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                      Derniers investisseurs
+                      Derniers investissements ({campaignInvestments.length})
                     </h3>
-                    <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
-                      Liste des investisseurs disponible prochainement.
-                    </div>
+                    {campaignInvestments.length > 0 ? (
+                      <div className="space-y-3">
+                        {campaignInvestments.map((inv) => (
+                          <div
+                            key={inv.id}
+                            className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-galsen-green/10 flex items-center justify-center">
+                                <DollarSign className="w-5 h-5 text-galsen-green" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">
+                                  {new Intl.NumberFormat('fr-FR').format(inv.amount)} {currentCampaign.devise}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(inv.createdAt).toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span
+                                className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                  inv.status === 'COMPLETED'
+                                    ? 'bg-green-100 text-green-700'
+                                    : inv.status === 'PENDING'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-red-100 text-red-700'
+                                }`}
+                              >
+                                {inv.status === 'COMPLETED' ? 'Confirmé' : inv.status === 'PENDING' ? 'En attente' : 'Annulé'}
+                              </span>
+                              {inv.notes && (
+                                <p className="text-xs text-gray-400 mt-1 max-w-[150px] truncate">{inv.notes}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
+                        Aucun investissement pour le moment. Soyez le premier !
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -257,31 +326,13 @@ export function CampaignDetail() {
               <h2 className="text-xl font-bold text-gray-900 mb-6">Investir</h2>
 
               {/* Progression */}
-              <div className="mb-6">
-                <div className="flex justify-between items-baseline mb-2">
-                  <span className="text-3xl font-bold text-gray-900">
-                    {percentage.toFixed(0)}%
-                  </span>
-                  <span className="text-sm text-gray-600">financé</span>
-                </div>
-                <ProgressBar
-                  current={currentCampaign.raisedAmount}
-                  goal={currentCampaign.targetAmount}
-                  color={'#10B981'}
-                  showPercentage={false}
-                  showLabels={false}
-                />
-                <div className="mt-3 space-y-1">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-900">
-                      {new Intl.NumberFormat('fr-FR').format(currentCampaign.raisedAmount)} {currentCampaign.devise}
-                    </span> collectés
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    sur {new Intl.NumberFormat('fr-FR').format(currentCampaign.targetAmount)} {currentCampaign.devise}
-                  </p>
-                </div>
-              </div>
+              <FundingProgress
+                raisedAmount={currentCampaign.raisedAmount}
+                targetAmount={currentCampaign.targetAmount}
+                devise={currentCampaign.devise}
+                variant="full"
+                className="mb-6"
+              />
 
               {/* Statistiques */}
               <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
@@ -289,8 +340,7 @@ export function CampaignDetail() {
                   <Users className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-600">Contributeurs</p>
-                    {/* Investor count not in API yet */}
-                    <p className="font-medium text-gray-900">-</p>
+                    <p className="font-medium text-gray-900">{campaignInvestments.length}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -316,6 +366,7 @@ export function CampaignDetail() {
               {/* Formulaire investissement */}
               {currentCampaign.status === 'APPROVED' ? (
                 <div className="space-y-4">
+                  {/* Montant */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Montant à investir ({currentCampaign.devise})
@@ -326,17 +377,74 @@ export function CampaignDetail() {
                       onChange={(e) => setInvestmentAmount(e.target.value)}
                       min={minInvestment}
                       placeholder={String(minInvestment)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-transparent"
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Minimum : {new Intl.NumberFormat('fr-FR').format(minInvestment)} {currentCampaign.devise}
                     </p>
                   </div>
 
+                  {/* Méthode de paiement */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <CreditCard className="w-4 h-4 inline mr-1" />
+                      Méthode de paiement
+                    </label>
+                    <div className="space-y-2">
+                      {PAYMENT_METHODS.map((method) => (
+                        <label
+                          key={method.code}
+                          className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                            !method.available
+                              ? 'opacity-50 cursor-not-allowed bg-gray-50'
+                              : paymentMethod === method.code
+                                ? 'border-galsen-green bg-galsen-green/5'
+                                : 'border-gray-200 hover:border-galsen-green/50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value={method.code}
+                            checked={paymentMethod === method.code}
+                            onChange={() => setPaymentMethod(method.code)}
+                            disabled={!method.available}
+                            className="accent-galsen-green"
+                          />
+                          <span className="text-lg">{method.logo}</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            {method.label}
+                            {!method.available && <span className="text-xs text-gray-400 ml-1">(bientôt)</span>}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Notes (optionnel) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <MessageSquare className="w-4 h-4 inline mr-1" />
+                      Note (optionnel)
+                    </label>
+                    <textarea
+                      value={investmentNotes}
+                      onChange={(e) => setInvestmentNotes(e.target.value)}
+                      placeholder="Ex: J'adore ce projet !"
+                      rows={2}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-galsen-green focus:border-transparent resize-none"
+                    />
+                  </div>
+
+                  {/* Erreur */}
+                  {investmentError && (
+                    <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{investmentError}</p>
+                  )}
+
                   <button
                     onClick={handleInvest}
                     disabled={investmentLoading || !investmentAmount || Number(investmentAmount) < minInvestment}
-                    className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+                    className="w-full px-6 py-3 bg-galsen-green hover:bg-galsen-green/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
                   >
                     {investmentLoading ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
-import { ProgressBar } from '../components/ProgressBar';
+import { FundingProgress } from '../components/FundingProgress';
 import { useCampaignStore, useAuthStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
 import { Plus, Send } from 'lucide-react';
@@ -159,7 +159,6 @@ export function BusinessCampaigns() {
             {/* Vue mobile — cartes */}
             <div className="md:hidden space-y-3">
               {filteredCampaigns.map(campaign => {
-                const percentage = campaign.fundingPercentage ?? 0;
                 return (
                   <div key={campaign.id} className="border border-galsen-green/10 rounded-xl p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -170,18 +169,12 @@ export function BusinessCampaigns() {
                       <StatusBadge status={campaign.status as any} />
                     </div>
 
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-galsen-blue/60">Progression</span>
-                        <span className="text-sm font-medium text-galsen-green">{percentage.toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-galsen-green/10 rounded-full h-2">
-                        <div
-                          className="bg-galsen-gold h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min(percentage, 100)}%` }}
-                        />
-                      </div>
-                    </div>
+                    <FundingProgress
+                      raisedAmount={campaign.raisedAmount}
+                      targetAmount={campaign.targetAmount}
+                      devise={campaign.devise}
+                      variant="compact"
+                    />
 
                     <div className="flex items-center justify-between">
                       <div>
@@ -230,7 +223,6 @@ export function BusinessCampaigns() {
                 </thead>
                 <tbody className="divide-y divide-galsen-green/10">
                   {filteredCampaigns.map(campaign => {
-                    const percentage = campaign.fundingPercentage ?? 0;
                     return (
                       <tr key={campaign.id} className="hover:bg-galsen-green/5 transition-colors">
                         <td className="px-4 py-4">
@@ -241,17 +233,13 @@ export function BusinessCampaigns() {
                           <StatusBadge status={campaign.status as any} />
                         </td>
                         <td className="px-4 py-4">
-                          <div className="min-w-[120px]">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-galsen-green">{percentage.toFixed(1)}%</span>
-                            </div>
-                            <div className="w-full bg-galsen-green/10 rounded-full h-2">
-                              <div
-                                className="bg-galsen-gold h-2 rounded-full transition-all"
-                                style={{ width: `${Math.min(percentage, 100)}%` }}
-                              />
-                            </div>
-                          </div>
+                          <FundingProgress
+                            raisedAmount={campaign.raisedAmount}
+                            targetAmount={campaign.targetAmount}
+                            devise={campaign.devise}
+                            variant="compact"
+                            className="min-w-[120px]"
+                          />
                         </td>
                         <td className="px-4 py-4 text-right">
                           <p className="font-medium text-galsen-blue">

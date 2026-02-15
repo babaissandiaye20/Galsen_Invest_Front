@@ -15,7 +15,7 @@ interface CampaignState {
     error: string | null;
 
     fetchAll: (params?: PaginationParams) => Promise<void>;
-    fetchApproved: (params?: PaginationParams) => Promise<void>;
+    fetchApproved: (params?: PaginationParams & { categoryId?: string }) => Promise<void>;
     fetchById: (id: string) => Promise<void>;
     search: (keyword: string, params?: PaginationParams) => Promise<void>;
     fetchByCategory: (categoryId: string, params?: PaginationParams) => Promise<void>;
@@ -57,6 +57,7 @@ export const useCampaignStore = create<CampaignState>()((set) => ({
         set({ loading: true, error: null });
         try {
             // L'API retourne directement PaginatedData, pas { data: PaginatedData }
+            // Supporte ?categoryId=<uuid> pour filtrer par catégorie côté serveur
             const paginatedData = await campaignService.getApproved(params);
             console.log('✅ [campaignStore] Campagnes approuvées:', paginatedData);
             const { content = [], ...pagination } = paginatedData ?? {};

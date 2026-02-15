@@ -1,6 +1,6 @@
 import React from 'react';
-import { Calendar, TrendingUp } from 'lucide-react'; // Replaced Users with TrendingUp since investorCount is missing
-import { ProgressBar } from './ProgressBar';
+import { Calendar } from 'lucide-react';
+import { FundingProgress } from './FundingProgress';
 import { Link } from 'react-router-dom';
 import type { Campaign } from '../models';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
@@ -10,9 +10,6 @@ interface CampaignCardProps {
 }
 
 export function CampaignCard({ campaign }: CampaignCardProps) {
-  // Calcul du pourcentage (déjà fourni par l'API mais on peut le recalculer pour être sûr)
-  const percentage = campaign.fundingPercentage || (campaign.raisedAmount / campaign.targetAmount) * 100;
-
   // Calcul des jours restants
   const calculateDaysLeft = (endDateStr: string) => {
     const end = new Date(endDateStr);
@@ -84,31 +81,19 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             {campaign.description}
           </p>
 
-          {/* Barre de progression */}
+          {/* Progression de financement */}
           <div className="mt-auto">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-galsen-green">
-                {percentage.toFixed(0)}% financé
-              </span>
-              <span className="text-sm text-galsen-blue/70">
-                {new Intl.NumberFormat('fr-FR').format(campaign.targetAmount)} {campaign.devise}
-              </span>
-            </div>
-            <ProgressBar
-              current={campaign.raisedAmount}
-              goal={campaign.targetAmount}
+            <FundingProgress
+              raisedAmount={campaign.raisedAmount}
+              targetAmount={campaign.targetAmount}
+              devise={campaign.devise}
+              variant="full"
               color={categoryColor}
-              showPercentage={false}
-              showLabels={false}
             />
           </div>
 
           {/* Statistiques */}
-          <div className="flex items-center justify-between text-sm text-galsen-blue/70">
-            <div className="flex items-center gap-1">
-              <TrendingUp className="w-4 h-4" />
-              <span>{new Intl.NumberFormat('fr-FR').format(campaign.raisedAmount)} collectés</span>
-            </div>
+          <div className="flex items-center justify-end text-sm text-galsen-blue/70">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
               <span>{daysLeft > 0 ? `${daysLeft} jours` : 'Terminé'}</span>

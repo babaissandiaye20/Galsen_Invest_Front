@@ -32,9 +32,17 @@ export function CampaignsList() {
 
   // Initial fetch
   useEffect(() => {
-    fetchApproved(); // Fetch approved campaigns by default
     fetchCategories();
-  }, [fetchApproved, fetchCategories]);
+  }, [fetchCategories]);
+
+  // Re-fetch quand la catégorie sélectionnée change (filtrage côté serveur)
+  useEffect(() => {
+    if (selectedCategory === 'all') {
+      fetchApproved();
+    } else {
+      fetchApproved({ categoryId: selectedCategory });
+    }
+  }, [selectedCategory, fetchApproved]);
 
   // Handle Search and Filter Logic
   // Note: The API supports server-side search and category filtering.
@@ -53,13 +61,10 @@ export function CampaignsList() {
     const matchesSearch = searchTerm === '' ||
       campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       campaign.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || campaign.categoryLibelle === selectedCategory || campaign.categoryId === selectedCategory;
-    // Status filter: Campaign model has specific statuses.
-    // If selectedStatus is empty, show all.
-    // Ensure status matches.
+    // Le filtre par catégorie est désormais côté serveur (via ?categoryId=)
     const matchesStatus = selectedStatus.length === 0 || selectedStatus.includes(campaign.status);
 
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
   // Sort logic
@@ -88,11 +93,10 @@ export function CampaignsList() {
 
   const resetFilters = () => {
     setSearchTerm('');
-    setSelectedCategory('all');
+    setSelectedCategory('all'); // Déclenche le useEffect → fetchApproved() sans categoryId
     setSelectedStatus(['APPROVED']);
     setSortBy('recent');
     setShowMobileFilters(false);
-    fetchApproved(); // Reset data
   };
 
   const filtersJsx = (
@@ -139,7 +143,7 @@ export function CampaignsList() {
         >
           <option value="all">Toutes les catégories</option>
           {categories.map(cat => (
-            <option key={cat.id} value={cat.libelle}>{cat.libelle}</option>
+            <option key={cat.id} value={cat.id}>{cat.libelle}</option>
           ))}
         </select>
       </div>
