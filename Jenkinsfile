@@ -10,7 +10,7 @@ pipeline {
         VPS_HOST       = '38.242.253.46'
         CONTAINER_NAME = 'galsen-frontend'
         CONTAINER_PORT = '8080'
-        HOST_PORT      = '8080'
+        HOST_PORT      = '3000'
 
         // Build version
         BUILD_VERSION = "${env.BUILD_NUMBER}-${env.GIT_COMMIT?.take(7) ?: 'latest'}"
