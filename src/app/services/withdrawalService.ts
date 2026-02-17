@@ -20,8 +20,20 @@ export const withdrawalService = {
         }),
 
     // 3.14 Mes demandes de retrait
-    getMyWithdrawals: (params?: PaginationParams) =>
-        apiGet<ApiResponse<PaginatedData<Withdrawal>>>('/investment-service/api/withdrawals/my-withdrawals', { params }),
+    getMyWithdrawals: async (params?: PaginationParams, businessProfileId?: string) => {
+        console.log('[WithdrawalService] getMyWithdrawals called with params:', params, 'profileId:', businessProfileId);
+        try {
+            const res = await apiGet<ApiResponse<PaginatedData<Withdrawal>>>('/investment-service/api/withdrawals/my-withdrawals', {
+                params,
+                headers: businessProfileId ? { 'X-Business-Profile-Id': businessProfileId } : undefined,
+            });
+            console.log('[WithdrawalService] getMyWithdrawals raw response:', JSON.stringify(res, null, 2));
+            return res;
+        } catch (err) {
+            console.error('[WithdrawalService] getMyWithdrawals ERROR:', err);
+            throw err;
+        }
+    },
 
     // 3.15 Détail d'une demande
     getById: (withdrawalId: string) =>
@@ -34,15 +46,33 @@ export const withdrawalService = {
         }),
 
     // 3.17 Demandes en attente (Admin)
-    getPending: (params?: PaginationParams) =>
-        apiGet<ApiResponse<PaginatedData<Withdrawal>>>('/investment-service/api/withdrawals/pending', { params }),
+    getPending: async (params?: PaginationParams) => {
+        console.log('[WithdrawalService] getPending called with params:', params);
+        try {
+            const res = await apiGet<ApiResponse<PaginatedData<Withdrawal>>>('/investment-service/api/withdrawals/pending', { params });
+            console.log('[WithdrawalService] getPending raw response:', JSON.stringify(res, null, 2));
+            return res;
+        } catch (err) {
+            console.error('[WithdrawalService] getPending ERROR:', err);
+            throw err;
+        }
+    },
 
     // 3.18 Demandes par statut (Admin)
-    getByStatus: (status: WithdrawalStatus, params?: PaginationParams) =>
-        apiGet<ApiResponse<PaginatedData<Withdrawal>>>(
-            `/investment-service/api/withdrawals/status/${status}`,
-            { params },
-        ),
+    getByStatus: async (status: WithdrawalStatus, params?: PaginationParams) => {
+        console.log('[WithdrawalService] getByStatus called with status:', status, 'params:', params);
+        try {
+            const res = await apiGet<ApiResponse<PaginatedData<Withdrawal>>>(
+                `/investment-service/api/withdrawals/status/${status}`,
+                { params },
+            );
+            console.log('[WithdrawalService] getByStatus raw response:', JSON.stringify(res, null, 2));
+            return res;
+        } catch (err) {
+            console.error('[WithdrawalService] getByStatus ERROR:', err);
+            throw err;
+        }
+    },
 
     // 3.19 Approuver un retrait (Admin)
     approve: (withdrawalId: string, adminId: string) =>

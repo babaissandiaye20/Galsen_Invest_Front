@@ -15,10 +15,13 @@ import { CampaignDetail } from './pages/CampaignDetail';
 import { BusinessDashboard } from './pages/BusinessDashboard';
 import { BusinessProfile } from './pages/BusinessProfile';
 import { BusinessCampaigns } from './pages/BusinessCampaigns';
+import { BusinessWallet } from './pages/BusinessWallet';
 import { CreateCampaign } from './pages/CreateCampaign';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminValidateCampaigns } from './pages/AdminValidateCampaigns';
 import { AdminValidateKYC } from './pages/AdminValidateKYC';
+import { AdminTransactions } from './pages/AdminTransactions';
+import { AdminWithdrawals } from './pages/AdminWithdrawals';
 
 export default function App() {
   return (
@@ -49,6 +52,7 @@ export default function App() {
         <Route path="/business/campaigns" element={<ProtectedRoute allowedRoles={['business']}><BusinessCampaigns /></ProtectedRoute>} />
         <Route path="/business/campaigns/new" element={<ProtectedRoute allowedRoles={['business']}><CreateCampaign /></ProtectedRoute>} />
         <Route path="/business/campaigns/:id" element={<ProtectedRoute allowedRoles={['business']}><BusinessDashboard /></ProtectedRoute>} />
+        <Route path="/business/wallet" element={<ProtectedRoute allowedRoles={['business']}><BusinessWallet /></ProtectedRoute>} />
         <Route path="/business/profile" element={<ProtectedRoute allowedRoles={['business']}><BusinessProfile /></ProtectedRoute>} />
 
         {/* Routes Admin */}
@@ -57,6 +61,8 @@ export default function App() {
         <Route path="/admin/campaigns/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminValidateCampaigns /></ProtectedRoute>} />
         <Route path="/admin/kyc" element={<ProtectedRoute allowedRoles={['admin']}><AdminValidateKYC /></ProtectedRoute>} />
         <Route path="/admin/kyc/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminValidateKYC /></ProtectedRoute>} />
+        <Route path="/admin/transactions" element={<ProtectedRoute allowedRoles={['admin']}><AdminTransactions /></ProtectedRoute>} />
+        <Route path="/admin/withdrawals" element={<ProtectedRoute allowedRoles={['admin']}><AdminWithdrawals /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
 
         {/* Catch all */}

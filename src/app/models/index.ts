@@ -46,6 +46,7 @@ export type {
     DepositSession,
     PaymentMethodCode,
     WithdrawalStatus,
+    WithdrawalMethod,
     Withdrawal,
     CreateWithdrawalRequest,
     RejectWithdrawalRequest,

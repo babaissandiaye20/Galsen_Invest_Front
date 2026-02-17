@@ -44,4 +44,8 @@ export const walletService = {
     // 3.12 Activer un wallet (Admin)
     activateWallet: (walletId: string) =>
         apiPut<ApiResponse<Wallet>>(`/investment-service/api/wallets/${walletId}/activate`),
+
+    // Admin — Lister toutes les transactions avec filtres type & status
+    getAdminTransactions: (params?: PaginationParams & { type?: string; status?: string }) =>
+        apiGet<ApiResponse<PaginatedData<Transaction>>>('/investment-service/api/transactions/admin', { params }),
 };

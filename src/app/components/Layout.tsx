@@ -14,6 +14,8 @@ import {
   X,
   ChevronDown,
   Shield,
+  Receipt,
+  ArrowDownCircle,
 } from 'lucide-react';
 import logoGalsen from '../images/logogalsen_invest.png';
 import { useAuthStore } from '../store/authStore';
@@ -29,7 +31,7 @@ interface LayoutProps {
 const roleConfig: Record<UserRole, { label: string; color: string; profilePath: string }> = {
   investor: { label: 'Investisseur', color: 'bg-galsen-green', profilePath: '/investor/profile' },
   business: { label: 'Entreprise', color: 'bg-galsen-gold', profilePath: '/business/profile' },
-  admin:    { label: 'Admin', color: 'bg-galsen-red', profilePath: '/admin/dashboard' },
+  admin: { label: 'Admin', color: 'bg-galsen-red', profilePath: '/admin/dashboard' },
 };
 
 // ─── Composant Avatar Dropdown ───────────────────────────────────────────────
@@ -159,6 +161,7 @@ export function Layout({ children, userType = 'investor' }: LayoutProps) {
   const businessNav = [
     { path: '/business/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
     { path: '/business/campaigns', label: 'Mes campagnes', icon: <TrendingUp className="w-5 h-5" /> },
+    { path: '/business/wallet', label: 'Portefeuille', icon: <Wallet className="w-5 h-5" /> },
     { path: '/business/profile', label: 'Mon profil', icon: <Building2 className="w-5 h-5" /> },
   ];
 
@@ -166,6 +169,8 @@ export function Layout({ children, userType = 'investor' }: LayoutProps) {
     { path: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
     { path: '/admin/campaigns', label: 'Campagnes', icon: <FileText className="w-5 h-5" /> },
     { path: '/admin/kyc', label: 'Documents KYC', icon: <CheckSquare className="w-5 h-5" /> },
+    { path: '/admin/transactions', label: 'Transactions', icon: <Receipt className="w-5 h-5" /> },
+    { path: '/admin/withdrawals', label: 'Retraits', icon: <ArrowDownCircle className="w-5 h-5" /> },
     { path: '/admin/users', label: 'Utilisateurs', icon: <Users className="w-5 h-5" /> },
   ];
 
@@ -214,9 +219,8 @@ export function Layout({ children, userType = 'investor' }: LayoutProps) {
 
       {/* ── Sidebar ───────────────────────────────────────────────────────── */}
       <aside
-        className={`fixed left-0 h-full w-64 bg-white border-r border-galsen-green/10 flex flex-col shadow-lg z-40 transition-transform duration-300 lg:translate-x-0 ${
-          isMobileMenuOpen ? 'translate-x-0 top-14' : '-translate-x-full top-14 lg:top-0'
-        }`}
+        className={`fixed left-0 h-full w-64 bg-white border-r border-galsen-green/10 flex flex-col shadow-lg z-40 transition-transform duration-300 lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0 top-14' : '-translate-x-full top-14 lg:top-0'
+          }`}
       >
         {/* Logo desktop */}
         <div className="hidden lg:block p-6 border-b border-galsen-green/10">
@@ -234,11 +238,10 @@ export function Layout({ children, userType = 'investor' }: LayoutProps) {
                 <Link
                   to={item.path}
                   onClick={closeMobileMenu}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                    location.pathname === item.path
-                      ? 'bg-galsen-green text-white shadow-md'
-                      : 'text-galsen-blue hover:bg-galsen-green/10'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${location.pathname === item.path
+                    ? 'bg-galsen-green text-white shadow-md'
+                    : 'text-galsen-blue hover:bg-galsen-green/10'
+                    }`}
                 >
                   {item.icon}
                   <span className="font-medium">{item.label}</span>

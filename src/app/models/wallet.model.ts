@@ -52,18 +52,34 @@ export interface DepositSession {
 
 // ─── Withdrawals (Retraits) ──────────────────────────────────────────────────
 
-export type WithdrawalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type WithdrawalStatus = 'PENDING' | 'APPROVED' | 'PROCESSING' | 'REJECTED' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+
+export type WithdrawalMethod = 'BANK_TRANSFER' | 'MOBILE_MONEY';
 
 export interface Withdrawal {
   id: string;
+  walletId: string;
   businessProfileId: string;
   amount: number;
+  currency: string;
+  withdrawalMethod: WithdrawalMethod;
+  paymentDetails: string;
   status: WithdrawalStatus;
-  createdAt: string;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  completedAt?: string;
+  transferReference?: string;
+  stripePayoutId?: string;
+  rejectionReason?: string;
+  notes?: string;
 }
 
 export interface CreateWithdrawalRequest {
   amount: number;
+  withdrawalMethod: WithdrawalMethod;
+  paymentDetails: string;
+  notes?: string;
 }
 
 export interface RejectWithdrawalRequest {
