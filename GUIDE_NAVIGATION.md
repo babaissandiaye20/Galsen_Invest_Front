@@ -5,7 +5,7 @@
 Plateforme complète de financement participatif avec 3 types d'utilisateurs :
 - **👤 Investisseurs** : Découvrent et investissent dans des campagnes
 - **🏢 Entreprises** : Créent et gèrent leurs campagnes de financement
-- **👨‍💼 Administrateurs** : Valident les campagnes et documents KYC
+- **👨‍💼 Administrateurs** : Valident les campnes et documents KYC
 
 ---
 
