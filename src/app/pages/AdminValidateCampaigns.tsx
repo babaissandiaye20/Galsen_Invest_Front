@@ -4,13 +4,14 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Eye, CheckCircle, XCircle, FileText } from 'lucide-react';
 import { useCampaignStore, useAuthStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
-import { campaignService } from '../services';
+import { campaignService, investmentService } from '../services';
 
 export function AdminValidateCampaigns() {
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [investmentCount, setInvestmentCount] = useState<number>(0);
   
   const { token, isAuthenticated } = useAuthStore(
     useShallow((s) => ({ token: s.token, isAuthenticated: s.isAuthenticated }))
@@ -30,6 +31,16 @@ export function AdminValidateCampaigns() {
       fetchAll({ page: 0, size: 100, sort: ['createdAt,DESC'] });
     }
   }, [isAuthenticated, token, fetchAll]);
+
+  // Charger le nombre d'investissements quand une campagne est sélectionnée
+  useEffect(() => {
+    if (selectedCampaign?.id) {
+      setInvestmentCount(0);
+      investmentService.getCountByCampaign(selectedCampaign.id)
+        .then(setInvestmentCount)
+        .catch(() => setInvestmentCount(0));
+    }
+  }, [selectedCampaign?.id]);
 
   // Filtrer uniquement les campagnes en révision (REVIEW, PENDING_REVIEW ou DRAFT)
   const pendingCampaigns = campaigns.filter(c => 
@@ -169,6 +180,11 @@ export function AdminValidateCampaigns() {
                     <div className="bg-gray-50 rounded-lg p-4">
                       <p className="text-sm text-gray-600 mb-1">Statut</p>
                       <StatusBadge status={selectedCampaign.status as any} />
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-sm text-gray-600 mb-1">Investissements</p>
+                      <p className="font-medium text-gray-900">{investmentCount}</p>
                     </div>
                   </div>
                   

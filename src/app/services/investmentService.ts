@@ -23,11 +23,22 @@ export const investmentService = {
         ),
 
     // 3.3 Investissements d'une campagne
-    getByCampaign: (campaignId: string, params?: PaginationParams) =>
+    getByCampaign: (campaignId: string, params?: PaginationParams) => {
+        const parts: string[] = [];
+        if (params?.page != null) parts.push(`page=${params.page}`);
+        if (params?.size != null) parts.push(`size=${params.size}`);
+        if (params?.sort) parts.push(`sort=${params.sort}`);
+        const qs = parts.length ? `?${parts.join('&')}` : '';
+        return apiGet<ApiResponse<PaginatedData<Investment>>>(
+            `/investment-service/api/investments/campaign/${campaignId}${qs}`,
+        );
+    },
+
+    // 3.3bis Nombre d'investissements d'une campagne (léger : size=1)
+    getCountByCampaign: (campaignId: string) =>
         apiGet<ApiResponse<PaginatedData<Investment>>>(
-            `/investment-service/api/investments/campaign/${campaignId}`,
-            { params },
-        ),
+            `/investment-service/api/investments/campaign/${campaignId}?page=0&size=1&sort=createdAt,DESC`,
+        ).then(res => res.data?.totalElements ?? 0),
 
     // 3.4 Total investi dans une campagne
     getCampaignTotal: (campaignId: string) =>

@@ -15,6 +15,8 @@ export interface Campaign {
   description: string;
   targetAmount: number;
   raisedAmount: number;
+  minInvestment: number | null;
+  maxInvestment: number | null;
   devise: string;
   fundingPercentage: number;
   startDate: string;

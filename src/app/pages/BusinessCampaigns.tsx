@@ -4,15 +4,16 @@ import { StatusBadge } from '../components/StatusBadge';
 import { FundingProgress } from '../components/FundingProgress';
 import { useCampaignStore, useAuthStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
-import { Plus, Send } from 'lucide-react';
+import { Plus, Send, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { campaignService } from '../services';
+import { campaignService, investmentService } from '../services';
 
 export function BusinessCampaigns() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'DRAFT' | 'REVIEW' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'FUNDED' | 'CLOSED'>('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [sortDirection, setSortDirection] = useState<'ASC' | 'DESC'>('DESC');
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [investmentCounts, setInvestmentCounts] = useState<Record<string, number>>({});
 
   const { token, isAuthenticated } = useAuthStore(
     useShallow((s) => ({ token: s.token, isAuthenticated: s.isAuthenticated }))
@@ -37,6 +38,17 @@ export function BusinessCampaigns() {
       });
     }
   }, [isAuthenticated, token, currentPage, sortDirection, fetchMyCampaigns]);
+
+  // Charger le nombre d'investissements pour chaque campagne
+  useEffect(() => {
+    if (campaigns.length > 0) {
+      campaigns.forEach(c => {
+        investmentService.getCountByCampaign(c.id)
+          .then(count => setInvestmentCounts(prev => ({ ...prev, [c.id]: count })))
+          .catch(() => {});
+      });
+    }
+  }, [campaigns]);
 
   // Filtrer les campagnes
   const filteredCampaigns = activeFilter === 'all'
@@ -176,6 +188,11 @@ export function BusinessCampaigns() {
                       variant="compact"
                     />
 
+                    <div className="flex items-center gap-2 text-xs text-galsen-blue/70">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>{investmentCounts[campaign.id] ?? '…'} investissement(s)</span>
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-galsen-blue">
@@ -217,6 +234,7 @@ export function BusinessCampaigns() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-galsen-blue">Campagne</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-galsen-blue">Statut</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-galsen-blue">Progression</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-galsen-blue">Investisseurs</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold text-galsen-blue">Objectif</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-galsen-blue">Actions</th>
                   </tr>
@@ -240,6 +258,9 @@ export function BusinessCampaigns() {
                             variant="compact"
                             className="min-w-[120px]"
                           />
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="font-medium text-galsen-blue">{investmentCounts[campaign.id] ?? '…'}</span>
                         </td>
                         <td className="px-4 py-4 text-right">
                           <p className="font-medium text-galsen-blue">

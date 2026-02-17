@@ -9,6 +9,7 @@ interface InvestmentState {
     investments: Investment[];
     campaignInvestments: Investment[];
     pagination: Omit<PaginatedData<Investment>, 'content'> | null;
+    campaignInvestmentTotal: number;
     loading: boolean;
     error: string | null;
 
@@ -23,6 +24,7 @@ export const useInvestmentStore = create<InvestmentState>()((set) => ({
     investments: [],
     campaignInvestments: [],
     pagination: null,
+    campaignInvestmentTotal: 0,
     loading: false,
     error: null,
 
@@ -42,12 +44,17 @@ export const useInvestmentStore = create<InvestmentState>()((set) => ({
     fetchByCampaign: async (campaignId, params) => {
         set({ loading: true, error: null });
         try {
-            const res = await investmentService.getByCampaign(campaignId, params);
-            const { content = [], ...pagination } = res.data ?? {};
-            set({ campaignInvestments: content, pagination, loading: false });
+            const res = await investmentService.getByCampaign(campaignId, {
+                page: 0,
+                size: 20,
+                sort: 'createdAt,DESC',
+                ...params,
+            });
+            const { content = [], totalElements = 0, ...pagination } = res.data ?? {};
+            set({ campaignInvestments: content, pagination: { totalElements, ...pagination }, campaignInvestmentTotal: totalElements, loading: false });
         } catch (err: unknown) {
             console.error('❌ Erreur fetchByCampaign:', err);
-            set({ error: extractErrorMessage(err, 'Erreur chargement investissements campagne'), campaignInvestments: [], loading: false });
+            set({ error: extractErrorMessage(err, 'Erreur chargement investissements campagne'), campaignInvestments: [], campaignInvestmentTotal: 0, loading: false });
         }
     },
 

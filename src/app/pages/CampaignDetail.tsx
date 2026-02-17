@@ -47,13 +47,14 @@ export function CampaignDetail() {
     }))
   );
 
-  const { createInvestment, investmentLoading, campaignInvestments, fetchByCampaign, investmentError } = useInvestmentStore(
+  const { createInvestment, investmentLoading, campaignInvestments, fetchByCampaign, investmentError, campaignInvestmentTotal } = useInvestmentStore(
     useShallow((state) => ({
       createInvestment: state.invest,
       investmentLoading: state.loading,
       campaignInvestments: state.campaignInvestments,
       fetchByCampaign: state.fetchByCampaign,
       investmentError: state.error,
+      campaignInvestmentTotal: state.campaignInvestmentTotal,
     }))
   );
 
@@ -61,7 +62,7 @@ export function CampaignDetail() {
   useEffect(() => {
     if (id) {
       fetchById(id);
-      fetchByCampaign(id, { size: 20 });
+      fetchByCampaign(id);
     }
   }, [id, fetchById, fetchByCampaign]);
 
@@ -108,10 +109,18 @@ export function CampaignDetail() {
 
   const daysLeft = calculateDaysLeft(currentCampaign.endDate);
 
+  // Min/max d'investissement : récupérés depuis la campagne, fallback 5000 / pas de max
+  const minInvestment = currentCampaign.minInvestment ?? 5000;
+  const maxInvestment = currentCampaign.maxInvestment;
+
   const handleInvest = async () => {
     const amount = Number(investmentAmount);
     if (!amount || amount < minInvestment) {
       toast.error(`Le montant minimum est de ${new Intl.NumberFormat('fr-FR').format(minInvestment)} ${currentCampaign.devise}`);
+      return;
+    }
+    if (maxInvestment && amount > maxInvestment) {
+      toast.error(`Le montant maximum est de ${new Intl.NumberFormat('fr-FR').format(maxInvestment)} ${currentCampaign.devise}`);
       return;
     }
     try {
@@ -124,16 +133,13 @@ export function CampaignDetail() {
       toast.success(`Investissement de ${new Intl.NumberFormat('fr-FR').format(amount)} ${currentCampaign.devise} effectué !`);
       // Rafraîchir les données de la campagne + la liste des investissements
       fetchById(currentCampaign.id);
-      fetchByCampaign(currentCampaign.id, { size: 20 });
+      fetchByCampaign(currentCampaign.id);
       setInvestmentAmount('');
       setInvestmentNotes('');
     } catch {
       toast.error("Erreur lors de l'investissement. Vérifiez votre solde ou réessayez.");
     }
   };
-
-  // Dummy min investment if not present (assuming 5000 FCFA default)
-  const minInvestment = 5000;
 
   return (
     <Layout userType="investor">
@@ -255,7 +261,7 @@ export function CampaignDetail() {
                 {activeTab === 'investments' && (
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                      Derniers investissements ({campaignInvestments.length})
+                      Derniers investissements ({campaignInvestmentTotal})
                     </h3>
                     {campaignInvestments.length > 0 ? (
                       <div className="space-y-3">
@@ -340,7 +346,7 @@ export function CampaignDetail() {
                   <Users className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-600">Contributeurs</p>
-                    <p className="font-medium text-gray-900">{campaignInvestments.length}</p>
+                    <p className="font-medium text-gray-900">{campaignInvestmentTotal}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -361,6 +367,17 @@ export function CampaignDetail() {
                     </p>
                   </div>
                 </div>
+                {maxInvestment && (
+                  <div className="flex items-center gap-3">
+                    <DollarSign className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-600">Montant maximum</p>
+                      <p className="font-medium text-gray-900">
+                        {new Intl.NumberFormat('fr-FR').format(maxInvestment)} {currentCampaign.devise}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Formulaire investissement */}
@@ -376,11 +393,13 @@ export function CampaignDetail() {
                       value={investmentAmount}
                       onChange={(e) => setInvestmentAmount(e.target.value)}
                       min={minInvestment}
+                      max={maxInvestment ?? undefined}
                       placeholder={String(minInvestment)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-transparent"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Minimum : {new Intl.NumberFormat('fr-FR').format(minInvestment)} {currentCampaign.devise}
+                      Min : {new Intl.NumberFormat('fr-FR').format(minInvestment)} {currentCampaign.devise}
+                      {maxInvestment && ` — Max : ${new Intl.NumberFormat('fr-FR').format(maxInvestment)} ${currentCampaign.devise}`}
                     </p>
                   </div>
 
@@ -443,7 +462,7 @@ export function CampaignDetail() {
 
                   <button
                     onClick={handleInvest}
-                    disabled={investmentLoading || !investmentAmount || Number(investmentAmount) < minInvestment}
+                    disabled={investmentLoading || !investmentAmount || Number(investmentAmount) < minInvestment || (!!maxInvestment && Number(investmentAmount) > maxInvestment)}
                     className="w-full px-6 py-3 bg-galsen-green hover:bg-galsen-green/90 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
                   >
                     {investmentLoading ? (
