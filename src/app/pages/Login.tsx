@@ -30,8 +30,27 @@ export function Login() {
       // Si l'utilisateur venait d'une page protégée, on le renvoie là-bas
       const redirectTo = from || getDashboardRoute(role);
       navigate(redirectTo, { replace: true });
-    } catch {
-      // Error is already set in the store
+    } catch (err: unknown) {
+      // Si le compte n'est pas activé → rediriger vers la vérification OTP
+      const fetchErr = err as { data?: { errorCode?: string; detail?: string; message?: string }; status?: number };
+      const errorCode = fetchErr?.data?.errorCode?.toLowerCase() || '';
+      const detail = fetchErr?.data?.detail?.toLowerCase() || '';
+      const message = fetchErr?.data?.message?.toLowerCase() || '';
+
+      const isNotActivated =
+        detail.includes('compte non activé') ||
+        detail.includes('non activé') ||
+        detail.includes('not activated') ||
+        message.includes('compte non activé') ||
+        message.includes('non activé') ||
+        message.includes('not activated') ||
+        errorCode.includes('not_activated') ||
+        errorCode.includes('pending_activation');
+
+      if (isNotActivated) {
+        navigate('/verify-otp', { state: { email }, replace: true });
+      }
+      // Sinon l'erreur est déjà dans le store
     }
   };
 

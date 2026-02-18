@@ -21,12 +21,19 @@ export interface Wallet {
 export interface Transaction {
   id: string;
   walletId: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'INVESTMENT' | 'RETURN' | 'REFUND';
+  transactionType: 'DEPOSIT' | 'WITHDRAWAL' | 'INVESTMENT' | 'RETURN' | 'REFUND';
   amount: number;
+  currency: string;
   status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   description: string;
   reference: string;
+  balanceAfter: number;
   createdAt: string;
+  completedAt: string | null;
+  ownerId: string;
+  ownerType: OwnerType;
+  ownerName: string;
+  ownerEmail: string;
 }
 
 // ─── Deposit ─────────────────────────────────────────────────────────────────

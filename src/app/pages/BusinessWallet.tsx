@@ -114,18 +114,18 @@ export function BusinessWallet() {
         });
 
     const filteredTransactions = transactions.filter((tx) => {
-        if (selectedType !== 'all' && tx.type !== selectedType) return false;
+        if (selectedType !== 'all' && tx.transactionType !== selectedType) return false;
         if (dateRange.start && new Date(tx.createdAt) < new Date(dateRange.start)) return false;
         if (dateRange.end && new Date(tx.createdAt) > new Date(dateRange.end)) return false;
         return true;
     });
 
     const totalDebit = transactions
-        .filter((tx) => ['WITHDRAWAL', 'INVESTMENT'].includes(tx.type))
+        .filter((tx) => ['WITHDRAWAL', 'INVESTMENT'].includes(tx.transactionType))
         .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
     const totalCredit = transactions
-        .filter((tx) => ['DEPOSIT', 'RETURN', 'REFUND'].includes(tx.type))
+        .filter((tx) => ['DEPOSIT', 'RETURN', 'REFUND'].includes(tx.transactionType))
         .reduce((sum, tx) => sum + tx.amount, 0);
 
     const handleWithdrawSubmit = async () => {
@@ -472,22 +472,22 @@ export function BusinessWallet() {
                             <div key={tx.id} className="p-4 border border-galsen-green/10 rounded-lg bg-galsen-white">
                                 <div className="flex justify-between items-start mb-3">
                                     <span
-                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.type === 'WITHDRAWAL'
+                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.transactionType === 'WITHDRAWAL'
                                             ? 'bg-galsen-red/10 text-galsen-red'
-                                            : tx.type === 'INVESTMENT'
+                                            : tx.transactionType === 'INVESTMENT'
                                                 ? 'bg-galsen-green/10 text-galsen-green'
                                                 : 'bg-galsen-gold/10 text-galsen-gold'
                                             }`}
                                     >
-                                        {tx.type === 'WITHDRAWAL' && <ArrowDownCircle className="w-3 h-3" />}
-                                        {tx.type === 'INVESTMENT' && <ArrowUpCircle className="w-3 h-3" />}
-                                        {tx.type === 'INVESTMENT'
+                                        {tx.transactionType === 'WITHDRAWAL' && <ArrowDownCircle className="w-3 h-3" />}
+                                        {tx.transactionType === 'INVESTMENT' && <ArrowUpCircle className="w-3 h-3" />}
+                                        {tx.transactionType === 'INVESTMENT'
                                             ? 'Investissement reçu'
-                                            : tx.type === 'DEPOSIT'
+                                            : tx.transactionType === 'DEPOSIT'
                                                 ? 'Dépôt'
-                                                : tx.type === 'WITHDRAWAL'
+                                                : tx.transactionType === 'WITHDRAWAL'
                                                     ? 'Retrait'
-                                                    : tx.type === 'REFUND'
+                                                    : tx.transactionType === 'REFUND'
                                                         ? 'Remboursement'
                                                         : 'Retour'}
                                     </span>
@@ -503,10 +503,10 @@ export function BusinessWallet() {
                                         })}
                                     </span>
                                     <span
-                                        className={`text-sm font-bold ${['WITHDRAWAL'].includes(tx.type) ? 'text-galsen-red' : 'text-galsen-green'
+                                        className={`text-sm font-bold ${['WITHDRAWAL'].includes(tx.transactionType) ? 'text-galsen-red' : 'text-galsen-green'
                                             }`}
                                     >
-                                        {['WITHDRAWAL'].includes(tx.type) ? '-' : '+'}
+                                        {['WITHDRAWAL'].includes(tx.transactionType) ? '-' : '+'}
                                         {new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
                                     </span>
                                 </div>
@@ -553,22 +553,22 @@ export function BusinessWallet() {
                                         </TableCell>
                                         <TableCell className="py-4 px-4">
                                             <span
-                                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.type === 'WITHDRAWAL'
+                                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.transactionType === 'WITHDRAWAL'
                                                     ? 'bg-galsen-red/10 text-galsen-red'
-                                                    : tx.type === 'INVESTMENT'
+                                                    : tx.transactionType === 'INVESTMENT'
                                                         ? 'bg-galsen-green/10 text-galsen-green'
                                                         : 'bg-galsen-gold/10 text-galsen-gold'
                                                     }`}
                                             >
-                                                {tx.type === 'WITHDRAWAL' && <ArrowDownCircle className="w-3 h-3" />}
-                                                {tx.type === 'INVESTMENT' && <ArrowUpCircle className="w-3 h-3" />}
-                                                {tx.type === 'INVESTMENT'
+                                                {tx.transactionType === 'WITHDRAWAL' && <ArrowDownCircle className="w-3 h-3" />}
+                                                {tx.transactionType === 'INVESTMENT' && <ArrowUpCircle className="w-3 h-3" />}
+                                                {tx.transactionType === 'INVESTMENT'
                                                     ? 'Investissement reçu'
-                                                    : tx.type === 'DEPOSIT'
+                                                    : tx.transactionType === 'DEPOSIT'
                                                         ? 'Dépôt'
-                                                        : tx.type === 'WITHDRAWAL'
+                                                        : tx.transactionType === 'WITHDRAWAL'
                                                             ? 'Retrait'
-                                                            : tx.type === 'REFUND'
+                                                            : tx.transactionType === 'REFUND'
                                                                 ? 'Remboursement'
                                                                 : 'Retour'}
                                             </span>
@@ -578,10 +578,10 @@ export function BusinessWallet() {
                                         </TableCell>
                                         <TableCell className="py-4 px-4">
                                             <span
-                                                className={`text-sm font-medium ${['WITHDRAWAL'].includes(tx.type) ? 'text-galsen-red' : 'text-galsen-green'
+                                                className={`text-sm font-medium ${['WITHDRAWAL'].includes(tx.transactionType) ? 'text-galsen-red' : 'text-galsen-green'
                                                     }`}
                                             >
-                                                {['WITHDRAWAL'].includes(tx.type) ? '-' : '+'}
+                                                {['WITHDRAWAL'].includes(tx.transactionType) ? '-' : '+'}
                                                 {new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
                                             </span>
                                         </TableCell>

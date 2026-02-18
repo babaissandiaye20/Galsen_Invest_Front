@@ -50,7 +50,12 @@ export const useWalletStore = create<WalletState>()((set) => ({
         set({ loading: true, error: null });
         try {
             const res = await walletService.getMyTransactions(params);
+            console.log('📦 [walletStore] Transactions brutes du backend:', JSON.stringify(res.data, null, 2));
             const { content = [], ...pagination } = res.data ?? {};
+            if (content.length > 0) {
+                console.log('📦 [walletStore] Exemple transaction[0]:', JSON.stringify(content[0], null, 2));
+                console.log('📦 [walletStore] Clés transaction[0]:', Object.keys(content[0]));
+            }
             set({ transactions: content, pagination, loading: false });
         } catch (err: unknown) {
             set({ error: extractErrorMessage(err, 'Erreur chargement transactions'), loading: false });
@@ -73,7 +78,12 @@ export const useWalletStore = create<WalletState>()((set) => ({
         set({ adminLoading: true, error: null });
         try {
             const res = await walletService.getAdminTransactions(params);
+            console.log('📦 [walletStore] Admin transactions brutes:', JSON.stringify(res.data, null, 2));
             const { content = [], ...pagination } = res.data ?? {};
+            if (content.length > 0) {
+                console.log('📦 [walletStore] Admin transaction[0]:', JSON.stringify(content[0], null, 2));
+                console.log('📦 [walletStore] Admin clés transaction[0]:', Object.keys(content[0]));
+            }
             set({ adminTransactions: content, adminTransactionsPagination: pagination, adminLoading: false });
         } catch (err: unknown) {
             set({ error: extractErrorMessage(err, 'Erreur chargement transactions admin'), adminLoading: false });

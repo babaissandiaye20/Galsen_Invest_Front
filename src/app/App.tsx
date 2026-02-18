@@ -22,6 +22,8 @@ import { AdminValidateCampaigns } from './pages/AdminValidateCampaigns';
 import { AdminValidateKYC } from './pages/AdminValidateKYC';
 import { AdminTransactions } from './pages/AdminTransactions';
 import { AdminWithdrawals } from './pages/AdminWithdrawals';
+import { AdminUsers } from './pages/AdminUsers';
+import { AdminProfile } from './pages/AdminProfile';
 
 export default function App() {
   return (
@@ -63,7 +65,8 @@ export default function App() {
         <Route path="/admin/kyc/:id" element={<ProtectedRoute allowedRoles={['admin']}><AdminValidateKYC /></ProtectedRoute>} />
         <Route path="/admin/transactions" element={<ProtectedRoute allowedRoles={['admin']}><AdminTransactions /></ProtectedRoute>} />
         <Route path="/admin/withdrawals" element={<ProtectedRoute allowedRoles={['admin']}><AdminWithdrawals /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+        <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={['admin']}><AdminProfile /></ProtectedRoute>} />
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -31,7 +31,7 @@ interface LayoutProps {
 const roleConfig: Record<UserRole, { label: string; color: string; profilePath: string }> = {
   investor: { label: 'Investisseur', color: 'bg-galsen-green', profilePath: '/investor/profile' },
   business: { label: 'Entreprise', color: 'bg-galsen-gold', profilePath: '/business/profile' },
-  admin: { label: 'Admin', color: 'bg-galsen-red', profilePath: '/admin/dashboard' },
+  admin: { label: 'Admin', color: 'bg-galsen-red', profilePath: '/admin/profile' },
 };
 
 // ─── Composant Avatar Dropdown ───────────────────────────────────────────────
@@ -172,6 +172,7 @@ export function Layout({ children, userType = 'investor' }: LayoutProps) {
     { path: '/admin/transactions', label: 'Transactions', icon: <Receipt className="w-5 h-5" /> },
     { path: '/admin/withdrawals', label: 'Retraits', icon: <ArrowDownCircle className="w-5 h-5" /> },
     { path: '/admin/users', label: 'Utilisateurs', icon: <Users className="w-5 h-5" /> },
+    { path: '/admin/profile', label: 'Mon profil', icon: <User className="w-5 h-5" /> },
   ];
 
   const navItems = userType === 'business' ? businessNav : userType === 'admin' ? adminNav : investorNav;

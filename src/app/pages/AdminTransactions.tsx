@@ -9,6 +9,7 @@ import {
   Loader2,
   Receipt,
   Filter,
+  User,
 } from 'lucide-react';
 import {
   Table,
@@ -196,46 +197,48 @@ export function AdminTransactions() {
               {adminTransactions.map((tx) => (
                 <div
                   key={tx.id}
-                  className={`bg-white rounded-lg shadow-md p-4 border-l-4 ${
-                    tx.status === 'PENDING'
+                  className={`bg-white rounded-lg shadow-md p-4 border-l-4 ${tx.status === 'PENDING'
                       ? 'border-yellow-400'
                       : tx.status === 'COMPLETED'
-                      ? 'border-green-400'
-                      : tx.status === 'FAILED'
-                      ? 'border-red-400'
-                      : 'border-gray-400'
-                  }`}
+                        ? 'border-green-400'
+                        : tx.status === 'FAILED'
+                          ? 'border-red-400'
+                          : 'border-gray-400'
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        isDebit(tx.type)
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${isDebit(tx.transactionType)
                           ? 'bg-red-50 text-red-700'
                           : 'bg-green-50 text-green-700'
-                      }`}
+                        }`}
                     >
-                      {isDebit(tx.type) ? (
+                      {isDebit(tx.transactionType) ? (
                         <ArrowDownCircle className="w-3 h-3" />
                       ) : (
                         <ArrowUpCircle className="w-3 h-3" />
                       )}
-                      {typeLabels[tx.type] || tx.type}
+                      {typeLabels[tx.transactionType] || tx.transactionType}
                     </span>
                     <StatusBadge status={tx.status} />
                   </div>
                   <p className="text-sm text-gray-600 mb-1 truncate">
                     {tx.description || tx.reference}
                   </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="w-3 h-3 text-gray-400" />
+                    <span className="text-xs text-gray-600 font-medium">{tx.ownerName}</span>
+                    <span className="text-xs text-gray-400">({tx.ownerEmail})</span>
+                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">
                       {new Date(tx.createdAt).toLocaleDateString('fr-FR')}
                     </span>
                     <span
-                      className={`text-sm font-bold ${
-                        isDebit(tx.type) ? 'text-red-600' : 'text-green-600'
-                      }`}
+                      className={`text-sm font-bold ${isDebit(tx.transactionType) ? 'text-red-600' : 'text-green-600'
+                        }`}
                     >
-                      {isDebit(tx.type) ? '-' : '+'}
+                      {isDebit(tx.transactionType) ? '-' : '+'}
                       {new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
                     </span>
                   </div>
@@ -256,6 +259,9 @@ export function AdminTransactions() {
                     <TableRow className="border-b border-gray-200 bg-gray-50">
                       <TableHead className="text-left py-4 px-6 text-sm font-medium text-gray-700">
                         Référence
+                      </TableHead>
+                      <TableHead className="text-left py-4 px-6 text-sm font-medium text-gray-700">
+                        Propriétaire
                       </TableHead>
                       <TableHead className="text-left py-4 px-6 text-sm font-medium text-gray-700">
                         Type
@@ -284,19 +290,28 @@ export function AdminTransactions() {
                           {tx.reference?.slice(0, 12) || '—'}
                         </TableCell>
                         <TableCell className="py-4 px-6">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">{tx.ownerName}</span>
+                            <span className="text-xs text-gray-500">{tx.ownerEmail}</span>
+                            <span className={`text-xs mt-0.5 px-1.5 py-0.5 rounded-full w-fit ${tx.ownerType === 'INVESTOR' ? 'bg-blue-50 text-blue-700' : tx.ownerType === 'BUSINESS' ? 'bg-purple-50 text-purple-700' : 'bg-gray-100 text-gray-700'
+                              }`}>
+                              {tx.ownerType}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 px-6">
                           <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              isDebit(tx.type)
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${isDebit(tx.transactionType)
                                 ? 'bg-red-50 text-red-700'
                                 : 'bg-green-50 text-green-700'
-                            }`}
+                              }`}
                           >
-                            {isDebit(tx.type) ? (
+                            {isDebit(tx.transactionType) ? (
                               <ArrowDownCircle className="w-3 h-3" />
                             ) : (
                               <ArrowUpCircle className="w-3 h-3" />
                             )}
-                            {typeLabels[tx.type] || tx.type}
+                            {typeLabels[tx.transactionType] || tx.transactionType}
                           </span>
                         </TableCell>
                         <TableCell className="py-4 px-6 text-sm text-gray-600 max-w-[200px] truncate">
@@ -304,11 +319,10 @@ export function AdminTransactions() {
                         </TableCell>
                         <TableCell className="py-4 px-6">
                           <span
-                            className={`text-sm font-medium ${
-                              isDebit(tx.type) ? 'text-red-600' : 'text-green-600'
-                            }`}
+                            className={`text-sm font-medium ${isDebit(tx.transactionType) ? 'text-red-600' : 'text-green-600'
+                              }`}
                           >
-                            {isDebit(tx.type) ? '-' : '+'}
+                            {isDebit(tx.transactionType) ? '-' : '+'}
                             {new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
                           </span>
                         </TableCell>

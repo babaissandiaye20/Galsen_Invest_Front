@@ -52,3 +52,4 @@ export type {
     RejectWithdrawalRequest,
 } from './wallet.model';
 export type { Pays, Sector } from './reference.model';
+export type { AdminUser, AdminUserProfile, UpdateUserStatusRequest, CampaignStats, InvestmentStats } from './admin.model';

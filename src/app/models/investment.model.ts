@@ -6,6 +6,8 @@ export interface Investment {
   id: string;
   campaignId: string;
   investorProfileId: string;
+  investorName: string;
+  campaignTitle: string;
   amount: number;
   status: 'COMPLETED' | 'CANCELLED' | 'PENDING';
   paymentMethod: string;

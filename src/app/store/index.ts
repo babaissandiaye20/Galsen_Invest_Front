@@ -10,3 +10,4 @@ export { useProfileStore } from './profileStore';
 export { useReferenceStore } from './referenceStore';
 export { useWalletStore } from './walletStore';
 export { useWithdrawalStore } from './withdrawalStore';
+export { useAdminStore } from './adminStore';

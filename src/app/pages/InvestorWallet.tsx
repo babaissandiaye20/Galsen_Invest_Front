@@ -86,18 +86,18 @@ export function InvestorWallet() {
   }, [fetchWallet, fetchTransactions]);
 
   const filteredTransactions = transactions.filter(tx => {
-    if (selectedType !== 'all' && tx.type !== selectedType) return false;
+    if (selectedType !== 'all' && tx.transactionType !== selectedType) return false;
     if (dateRange.start && new Date(tx.createdAt) < new Date(dateRange.start)) return false;
     if (dateRange.end && new Date(tx.createdAt) > new Date(dateRange.end)) return false;
     return true;
   });
 
   const totalDebit = transactions
-    .filter(tx => ['WITHDRAWAL', 'INVESTMENT'].includes(tx.type))
+    .filter(tx => ['WITHDRAWAL', 'INVESTMENT'].includes(tx.transactionType))
     .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
   const totalCredit = transactions
-    .filter(tx => ['DEPOSIT', 'RETURN', 'REFUND'].includes(tx.type))
+    .filter(tx => ['DEPOSIT', 'RETURN', 'REFUND'].includes(tx.transactionType))
     .reduce((sum, tx) => sum + tx.amount, 0);
 
   const handleDepositSubmit = async () => {
@@ -288,16 +288,16 @@ export function InvestorWallet() {
             {filteredTransactions.map((tx) => (
               <div key={tx.id} className="p-4 border border-galsen-green/10 rounded-lg bg-galsen-white">
                 <div className="flex justify-between items-start mb-3">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.type === 'INVESTMENT' ? 'bg-galsen-red/10 text-galsen-red' :
-                      tx.type === 'DEPOSIT' ? 'bg-galsen-green/10 text-galsen-green' :
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.transactionType === 'INVESTMENT' ? 'bg-galsen-red/10 text-galsen-red' :
+                      tx.transactionType === 'DEPOSIT' ? 'bg-galsen-green/10 text-galsen-green' :
                         'bg-galsen-gold/10 text-galsen-gold'
                     }`}>
-                    {tx.type === 'INVESTMENT' && <ArrowDownCircle className="w-3 h-3" />}
-                    {tx.type === 'DEPOSIT' && <ArrowUpCircle className="w-3 h-3" />}
-                    {tx.type === 'INVESTMENT' ? 'Investissement' :
-                      tx.type === 'DEPOSIT' ? 'Recharge' :
-                        tx.type === 'WITHDRAWAL' ? 'Retrait' :
-                          tx.type === 'REFUND' ? 'Remboursement' : 'Retour'}
+                    {tx.transactionType === 'INVESTMENT' && <ArrowDownCircle className="w-3 h-3" />}
+                    {tx.transactionType === 'DEPOSIT' && <ArrowUpCircle className="w-3 h-3" />}
+                    {tx.transactionType === 'INVESTMENT' ? 'Investissement' :
+                      tx.transactionType === 'DEPOSIT' ? 'Recharge' :
+                        tx.transactionType === 'WITHDRAWAL' ? 'Retrait' :
+                          tx.transactionType === 'REFUND' ? 'Remboursement' : 'Retour'}
                   </span>
                   <StatusBadge status={tx.status as any} />
                 </div>
@@ -310,9 +310,9 @@ export function InvestorWallet() {
                       year: 'numeric'
                     })}
                   </span>
-                  <span className={`text-sm font-bold ${['INVESTMENT', 'WITHDRAWAL'].includes(tx.type) ? 'text-galsen-red' : 'text-galsen-green'
+                  <span className={`text-sm font-bold ${['INVESTMENT', 'WITHDRAWAL'].includes(tx.transactionType) ? 'text-galsen-red' : 'text-galsen-green'
                     }`}>
-                    {['INVESTMENT', 'WITHDRAWAL'].includes(tx.type) ? '-' : '+'}{new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
+                    {['INVESTMENT', 'WITHDRAWAL'].includes(tx.transactionType) ? '-' : '+'}{new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
                   </span>
                 </div>
               </div>
@@ -344,25 +344,25 @@ export function InvestorWallet() {
                       })}
                     </TableCell>
                     <TableCell className="py-4 px-4">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.type === 'INVESTMENT' ? 'bg-galsen-red/10 text-galsen-red' :
-                          tx.type === 'DEPOSIT' ? 'bg-galsen-green/10 text-galsen-green' :
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${tx.transactionType === 'INVESTMENT' ? 'bg-galsen-red/10 text-galsen-red' :
+                          tx.transactionType === 'DEPOSIT' ? 'bg-galsen-green/10 text-galsen-green' :
                             'bg-galsen-gold/10 text-galsen-gold'
                         }`}>
-                        {tx.type === 'INVESTMENT' && <ArrowDownCircle className="w-3 h-3" />}
-                        {tx.type === 'DEPOSIT' && <ArrowUpCircle className="w-3 h-3" />}
-                        {tx.type === 'INVESTMENT' ? 'Investissement' :
-                          tx.type === 'DEPOSIT' ? 'Recharge' :
-                            tx.type === 'WITHDRAWAL' ? 'Retrait' :
-                              tx.type === 'REFUND' ? 'Remboursement' : 'Retour'}
+                        {tx.transactionType === 'INVESTMENT' && <ArrowDownCircle className="w-3 h-3" />}
+                        {tx.transactionType === 'DEPOSIT' && <ArrowUpCircle className="w-3 h-3" />}
+                        {tx.transactionType === 'INVESTMENT' ? 'Investissement' :
+                          tx.transactionType === 'DEPOSIT' ? 'Recharge' :
+                            tx.transactionType === 'WITHDRAWAL' ? 'Retrait' :
+                              tx.transactionType === 'REFUND' ? 'Remboursement' : 'Retour'}
                       </span>
                     </TableCell>
                     <TableCell className="py-4 px-4 text-sm text-galsen-blue/70">
                       {tx.description}
                     </TableCell>
                     <TableCell className="py-4 px-4">
-                      <span className={`text-sm font-medium ${['INVESTMENT', 'WITHDRAWAL'].includes(tx.type) ? 'text-galsen-red' : 'text-galsen-green'
+                      <span className={`text-sm font-medium ${['INVESTMENT', 'WITHDRAWAL'].includes(tx.transactionType) ? 'text-galsen-red' : 'text-galsen-green'
                         }`}>
-                        {['INVESTMENT', 'WITHDRAWAL'].includes(tx.type) ? '-' : '+'}{new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
+                        {['INVESTMENT', 'WITHDRAWAL'].includes(tx.transactionType) ? '-' : '+'}{new Intl.NumberFormat('fr-FR').format(tx.amount)} FCFA
                       </span>
                     </TableCell>
                     <TableCell className="py-4 px-4">

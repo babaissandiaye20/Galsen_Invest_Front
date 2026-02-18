@@ -11,3 +11,4 @@ export { categoryService } from './categoryService';
 export { investmentService } from './investmentService';
 export { walletService } from './walletService';
 export { withdrawalService } from './withdrawalService';
+export { adminService } from './adminService';
