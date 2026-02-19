@@ -173,8 +173,8 @@ pipeline {
                             # Supprimer toutes les images versionnees sauf latest et rollback
                             docker images --format "{{.Repository}}:{{.Tag}}" \
                                 | grep "^${DOCKERHUB_USERNAME}/${IMAGE_NAME}:" \
-                                | grep -v ":latest$" \
-                                | grep -v ":rollback$" \
+                                | grep -v ":latest\$" \
+                                | grep -v ":rollback\$" \
                                 | xargs -r docker rmi 2>/dev/null || true
 
                             # Supprimer les images dangling et le cache
