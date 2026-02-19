@@ -169,8 +169,20 @@ pipeline {
                                 -p ${HOST_PORT}:${CONTAINER_PORT} \
                                 ${DOCKERHUB_USERNAME}/${IMAGE_NAME}:latest
 
-                            echo ">>> Nettoyage images inutilisees..."
-                            docker image prune -f
+                            echo ">>> Nettoyage images anciennes..."
+                            # Supprimer toutes les images versionnees sauf latest et rollback
+                            docker images --format "{{.Repository}}:{{.Tag}}" \
+                                | grep "^${DOCKERHUB_USERNAME}/${IMAGE_NAME}:" \
+                                | grep -v ":latest$" \
+                                | grep -v ":rollback$" \
+                                | xargs -r docker rmi 2>/dev/null || true
+
+                            # Supprimer les images dangling et le cache
+                            docker image prune -af --filter "until=1h"
+                            docker builder prune -f 2>/dev/null || true
+
+                            echo ">>> Espace disque apres nettoyage:"
+                            docker system df
 
                             echo ">>> Container actif:"
                             docker ps --filter name=${CONTAINER_NAME}
@@ -242,6 +254,18 @@ pipeline {
     post {
         success {
             echo "FRONTEND ${BUILD_VERSION} DEPLOYE AVEC SUCCES sur ${VPS_HOST}"
+            sh """
+                echo ">>> Nettoyage images locales (Jenkins)..."
+                # Supprimer toutes les images versionnees locales sauf latest et rollback
+                docker images --format '{{.Repository}}:{{.Tag}}' \
+                    | grep '^${DOCKERHUB_USERNAME}/${IMAGE_NAME}:' \
+                    | grep -v ':latest\$' \
+                    | grep -v ':rollback\$' \
+                    | xargs -r docker rmi 2>/dev/null || true
+
+                # Nettoyer les images dangling locales
+                docker image prune -f
+            """
         }
         failure {
             echo "ECHEC DU BUILD FRONTEND ${BUILD_VERSION}"
