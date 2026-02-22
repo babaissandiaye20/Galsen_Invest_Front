@@ -149,29 +149,29 @@ export function CreateCampaign() {
     <Layout userType="business">
       <div>
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8">
           <button
             onClick={() => navigate('/business/dashboard')}
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center gap-2 text-galsen-blue/70 hover:text-galsen-green mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour au dashboard
           </button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Créer une campagne</h1>
-          <p className="text-gray-600">Remplissez les informations de votre campagne de financement</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-galsen-green mb-2">Créer une campagne</h1>
+          <p className="text-galsen-blue/70 text-sm md:text-base">Remplissez les informations de votre campagne de financement</p>
         </div>
 
         {/* Stepper */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-3 md:p-4 mb-4 md:mb-6 border border-galsen-green/10">
           <div className="flex items-center justify-between">
             {[1, 2, 3, 4, 5].map((step) => (
               <React.Fragment key={step}>
                 <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                  <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-medium text-sm md:text-base ${step <= currentStep ? 'bg-galsen-green text-white' : 'bg-gray-200 text-gray-600'
                     }`}>
                     {step}
                   </div>
-                  <span className="text-xs mt-1 text-gray-600 hidden md:block">
+                  <span className="text-xs mt-1 text-galsen-blue/70 hidden sm:block">
                     {step === 1 && 'Informations'}
                     {step === 2 && 'Objectifs'}
                     {step === 3 && 'Images'}
@@ -180,7 +180,7 @@ export function CreateCampaign() {
                   </span>
                 </div>
                 {step < 5 && (
-                  <div className={`flex-1 h-1 mx-2 ${step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
+                  <div className={`flex-1 h-1 mx-1 md:mx-2 ${step < currentStep ? 'bg-galsen-green' : 'bg-gray-200'
                     }`} />
                 )}
               </React.Fragment>
@@ -189,9 +189,9 @@ export function CreateCampaign() {
         </div>
 
         {/* Formulaire */}
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-4 md:p-8 border border-galsen-green/10">
           {createError && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+            <div className="mb-4 p-3 bg-galsen-red/10 border border-galsen-red/30 text-galsen-red text-sm rounded-lg">
               {createError}
             </div>
           )}
@@ -199,11 +199,11 @@ export function CreateCampaign() {
           {/* Étape 1: Informations de base */}
           {currentStep === 1 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Informations de base</h2>
+              <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">Informations de base</h2>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Titre de la campagne <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-galsen-blue mb-2">
+                  Titre de la campagne <span className="text-galsen-red">*</span>
                 </label>
                 <input
                   type="text"
@@ -211,22 +211,22 @@ export function CreateCampaign() {
                   value={formData.title}
                   onChange={handleChange}
                   maxLength={200}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                   placeholder="Ex: Financement ferme bio au Sénégal"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">{formData.title.length}/200 caractères</p>
+                <p className="text-xs text-galsen-blue/60 mt-1">{formData.title.length}/200 caractères</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Catégorie <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-galsen-blue mb-2">
+                  Catégorie <span className="text-galsen-red">*</span>
                 </label>
                 <select
                   name="categoryId"
                   value={formData.categoryId}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                   required
                 >
                   <option value="">Sélectionnez une catégorie</option>
@@ -237,8 +237,8 @@ export function CreateCampaign() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description courte <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-galsen-blue mb-2">
+                  Description courte <span className="text-galsen-red">*</span>
                 </label>
                 <textarea
                   name="shortDescription"
@@ -246,23 +246,23 @@ export function CreateCampaign() {
                   onChange={handleChange}
                   maxLength={500}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                   placeholder="Résumé de votre projet en quelques lignes..."
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">{formData.shortDescription.length}/500 caractères</p>
+                <p className="text-xs text-galsen-blue/60 mt-1">{formData.shortDescription.length}/500 caractères</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description détaillée <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-galsen-blue mb-2">
+                  Description détaillée <span className="text-galsen-red">*</span>
                 </label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   rows={8}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                   placeholder="Décrivez en détail votre projet, vos objectifs, l'impact attendu..."
                   required
                 />
@@ -273,11 +273,11 @@ export function CreateCampaign() {
           {/* Étape 2: Objectifs financiers */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Objectifs financiers</h2>
+              <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">Objectifs financiers</h2>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Montant objectif (FCFA) <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-galsen-blue mb-2">
+                  Montant objectif (FCFA) <span className="text-galsen-red">*</span>
                 </label>
                 <input
                   type="number"
@@ -285,7 +285,7 @@ export function CreateCampaign() {
                   value={formData.targetAmount}
                   onChange={handleChange}
                   min="100000"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                   placeholder="10000000"
                   required
                 />
@@ -293,8 +293,8 @@ export function CreateCampaign() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Investissement minimum (FCFA) <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-galsen-blue mb-2">
+                    Investissement minimum (FCFA) <span className="text-galsen-red">*</span>
                   </label>
                   <input
                     type="number"
@@ -302,15 +302,15 @@ export function CreateCampaign() {
                     value={formData.minInvestment}
                     onChange={handleChange}
                     min="1000"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                     placeholder="50000"
                     required
                   />
-                  <p className="text-xs text-gray-500 mt-1">Sera inclus dans la description</p>
+                  <p className="text-xs text-galsen-blue/60 mt-1">Sera inclus dans la description</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-galsen-blue mb-2">
                     Investissement maximum (FCFA)
                   </label>
                   <input
@@ -318,7 +318,7 @@ export function CreateCampaign() {
                     name="maxInvestment"
                     value={formData.maxInvestment}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                     placeholder="500000"
                   />
                 </div>
@@ -326,37 +326,37 @@ export function CreateCampaign() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date de début <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-galsen-blue mb-2">
+                    Date de début <span className="text-galsen-red">*</span>
                   </label>
                   <input
                     type="date"
                     name="startDate"
                     value={formData.startDate}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date de fin <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-galsen-blue mb-2">
+                    Date de fin <span className="text-galsen-red">*</span>
                   </label>
                   <input
                     type="date"
                     name="endDate"
                     value={formData.endDate}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-galsen-green/30 rounded-lg focus:ring-2 focus:ring-galsen-green focus:border-galsen-green"
                     required
                   />
                 </div>
               </div>
 
               {formData.startDate && formData.endDate && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-900">
+                <div className="bg-galsen-green/5 border border-galsen-green/20 rounded-lg p-4">
+                  <p className="text-sm text-galsen-blue">
                     Durée de la campagne : {Math.ceil((new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 60 * 60 * 24))} jours
                   </p>
                 </div>
@@ -367,13 +367,13 @@ export function CreateCampaign() {
           {/* Étape 3: Images */}
           {currentStep === 3 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Images de la campagne</h2>
+              <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">Images de la campagne</h2>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Image de couverture <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-galsen-blue mb-2">
+                  Image de couverture <span className="text-galsen-red">*</span>
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
+                <div className="border-2 border-dashed border-galsen-green/30 rounded-lg p-8 text-center hover:border-galsen-green transition-colors">
                   {coverImagePreview ? (
                     <div className="relative">
                       <img src={coverImagePreview} alt="Couverture" className="max-h-64 mx-auto rounded-lg" />
@@ -382,17 +382,17 @@ export function CreateCampaign() {
                           setCoverImageFile(null);
                           setCoverImagePreview(null);
                         }}
-                        className="absolute top-2 right-2 px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700"
+                        className="absolute top-2 right-2 px-3 py-1 bg-galsen-red text-white text-sm rounded-lg hover:bg-galsen-red/80"
                       >
                         Supprimer
                       </button>
                     </div>
                   ) : (
                     <>
-                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-700 mb-2">Image de couverture</p>
-                      <p className="text-sm text-gray-500 mb-4">Recommandé : 1200x600px, JPG/PNG, max 5MB</p>
-                      <label className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer transition-colors">
+                      <Upload className="w-12 h-12 text-galsen-green/40 mx-auto mb-4" />
+                      <p className="text-galsen-blue mb-2">Image de couverture</p>
+                      <p className="text-sm text-galsen-blue/60 mb-4">Recommandé : 1200x600px, JPG/PNG, max 5MB</p>
+                      <label className="inline-block px-6 py-3 bg-galsen-green hover:bg-galsen-green/90 text-white font-medium rounded-lg cursor-pointer transition-colors">
                         Choisir une image
                         <input
                           type="file"
@@ -407,17 +407,17 @@ export function CreateCampaign() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-galsen-blue mb-2">
                   Photos additionnelles (max 10)
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-500 transition-colors">
+                <div className="border-2 border-dashed border-galsen-green/30 rounded-lg p-6 hover:border-galsen-green transition-colors">
                   <div className="grid grid-cols-5 gap-4 mb-4">
                     {additionalPhotoPreviews.map((photo, index) => (
                       <div key={index} className="relative">
                         <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-24 object-cover rounded-lg" />
                         <button
                           onClick={() => removeAdditionalPhoto(index)}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white text-xs rounded-full hover:bg-red-700"
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-galsen-red text-white text-xs rounded-full hover:bg-galsen-red/80"
                         >
                           ×
                         </button>
@@ -426,8 +426,8 @@ export function CreateCampaign() {
                   </div>
                   {additionalPhotoFiles.length < 10 && (
                     <label className="flex flex-col items-center gap-2 cursor-pointer">
-                      <ImageIcon className="w-8 h-8 text-gray-400" />
-                      <span className="text-sm text-gray-600">Ajouter des photos</span>
+                      <ImageIcon className="w-8 h-8 text-galsen-green/40" />
+                      <span className="text-sm text-galsen-blue/70">Ajouter des photos</span>
                       <input
                         type="file"
                         onChange={handleAdditionalPhotos}
@@ -445,13 +445,13 @@ export function CreateCampaign() {
           {/* Étape 4: Documents */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Documents légaux (optionnel)</h2>
-              <p className="text-gray-600 mb-4">Uploadez vos documents légaux pour renforcer la crédibilité de votre campagne</p>
+              <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">Documents légaux (optionnel)</h2>
+              <p className="text-galsen-blue/70 mb-4">Uploadez vos documents légaux pour renforcer la crédibilité de votre campagne</p>
 
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-700 mb-4">Business plan, états financiers, licences...</p>
-                <label className="inline-block px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg cursor-pointer transition-colors">
+              <div className="border-2 border-dashed border-galsen-green/30 rounded-lg p-8 text-center hover:border-galsen-green transition-colors">
+                <Upload className="w-12 h-12 text-galsen-green/40 mx-auto mb-4" />
+                <p className="text-galsen-blue mb-4">Business plan, états financiers, licences...</p>
+                <label className="inline-block px-6 py-3 bg-galsen-blue hover:bg-galsen-blue/90 text-white font-medium rounded-lg cursor-pointer transition-colors">
                   Choisir des fichiers
                   <input
                     type="file"
@@ -459,9 +459,8 @@ export function CreateCampaign() {
                     multiple
                     className="hidden"
                   />
-                  {/* Note: Document upload implementation pending backend support or similar to photos */}
                 </label>
-                <p className="text-xs text-gray-500 mt-4">Formats acceptés : PDF, DOC, DOCX</p>
+                <p className="text-xs text-galsen-blue/60 mt-4">Formats acceptés : PDF, DOC, DOCX</p>
               </div>
             </div>
           )}
@@ -469,31 +468,31 @@ export function CreateCampaign() {
           {/* Étape 5: Révision */}
           {currentStep === 5 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Révision de la campagne</h2>
+              <h2 className="text-lg md:text-xl font-bold text-galsen-blue mb-4">Révision de la campagne</h2>
 
-              <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+              <div className="bg-galsen-green/5 rounded-lg p-6 space-y-4 border border-galsen-green/10">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">Titre</h3>
-                  <p className="text-gray-900">{formData.title || 'Non renseigné'}</p>
+                  <h3 className="text-sm font-medium text-galsen-blue/70 mb-1">Titre</h3>
+                  <p className="text-galsen-blue">{formData.title || 'Non renseigné'}</p>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">Catégorie</h3>
-                  <p className="text-gray-900">
+                  <h3 className="text-sm font-medium text-galsen-blue/70 mb-1">Catégorie</h3>
+                  <p className="text-galsen-blue">
                     {categories.find(c => c.id === formData.categoryId)?.libelle || 'Non renseignée'}
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">Objectif financier</h3>
-                  <p className="text-gray-900">
+                  <h3 className="text-sm font-medium text-galsen-blue/70 mb-1">Objectif financier</h3>
+                  <p className="text-galsen-blue">
                     {formData.targetAmount ? `${new Intl.NumberFormat('fr-FR').format(Number(formData.targetAmount))} FCFA` : 'Non renseigné'}
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">Période</h3>
-                  <p className="text-gray-900">
+                  <h3 className="text-sm font-medium text-galsen-blue/70 mb-1">Période</h3>
+                  <p className="text-galsen-blue">
                     {formData.startDate && formData.endDate
                       ? `Du ${new Date(formData.startDate).toLocaleDateString('fr-FR')} au ${new Date(formData.endDate).toLocaleDateString('fr-FR')}`
                       : 'Non renseignée'}
@@ -501,18 +500,18 @@ export function CreateCampaign() {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">Image de couverture</h3>
+                  <h3 className="text-sm font-medium text-galsen-blue/70 mb-1">Image de couverture</h3>
                   {coverImagePreview ? (
                     <img src={coverImagePreview} alt="Aperçu" className="max-h-32 rounded-lg" />
                   ) : (
-                    <p className="text-gray-500">Aucune image</p>
+                    <p className="text-galsen-blue/50">Aucune image</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <input type="checkbox" id="certify" className="mt-1" required />
-                <label htmlFor="certify" className="text-sm text-blue-900">
+              <div className="flex items-start gap-3 p-4 bg-galsen-green/5 border border-galsen-green/20 rounded-lg">
+                <input type="checkbox" id="certify" className="mt-1 accent-galsen-green" required />
+                <label htmlFor="certify" className="text-sm text-galsen-blue">
                   Je certifie que toutes les informations fournies sont exactes et conformes à la réalité.
                   Je comprends que toute fausse déclaration peut entraîner le rejet de ma campagne.
                 </label>
@@ -521,47 +520,58 @@ export function CreateCampaign() {
           )}
 
           {/* Boutons de navigation */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
-            {currentStep > 1 && (
+          <div className="flex items-center justify-between mt-6 md:mt-8 pt-4 border-t border-galsen-green/10">
+            {currentStep > 1 ? (
               <button
                 onClick={handlePrev}
                 disabled={createLoading}
-                className="inline-flex items-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 border border-galsen-green/30 text-galsen-blue rounded-lg hover:bg-galsen-white transition-colors disabled:opacity-50 text-sm md:text-base"
               >
-                <ArrowLeft className="w-5 h-5" />
-                Précédent
+                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="hidden sm:inline">Précédent</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/business/dashboard')}
+                className="text-galsen-blue hover:text-galsen-green text-sm md:text-base transition-colors"
+              >
+                ← Retour
               </button>
             )}
 
-            <div className="flex gap-3 ml-auto">
+            <div className="flex gap-3">
               <button
                 onClick={handleSaveDraft}
                 disabled={createLoading}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="hidden sm:block px-4 md:px-6 py-2 md:py-3 border border-galsen-green/30 text-galsen-blue rounded-lg hover:bg-galsen-white transition-colors disabled:opacity-50 text-sm md:text-base"
               >
-                Enregistrer comme brouillon
+                Brouillon
               </button>
 
               {currentStep < 5 ? (
                 <button
                   onClick={handleNext}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-galsen-gold hover:bg-galsen-gold/90 text-galsen-blue font-medium rounded-lg transition-colors text-sm md:text-base"
                 >
-                  Suivant
-                  <ArrowRight className="w-5 h-5" />
+                  <span className="hidden sm:inline">Suivant</span>
+                  <span className="sm:hidden">Suite</span>
+                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
               ) : (
                 <button
                   onClick={handleSubmit}
                   disabled={createLoading}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-galsen-green hover:bg-galsen-green/90 text-white font-medium rounded-lg transition-colors shadow-lg shadow-galsen-green/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
                 >
                   {createLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Soumission...
+                    </span>
                   ) : (
                     <>
-                      <CheckCircle className="w-5 h-5" />
-                      Soumettre pour validation
+                      <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
+                      Soumettre
                     </>
                   )}
                 </button>

@@ -99,45 +99,84 @@ export function RegisterInvestor() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key === 'Enter' && currentStep < 4) {
       e.preventDefault();
-      console.log('Entrée bloquée - Étape', currentStep);
-      // Passer à l'étape suivante au lieu de soumettre
-      handleNext();
+      e.stopPropagation();
+    }
+  };
+
+  // Validation par étape
+  const validateStep = (step: number): string | null => {
+    switch (step) {
+      case 1:
+        if (isBusiness) {
+          if (!formData.companyName.trim()) return "Le nom de l'entreprise est requis";
+          if (!formData.legalForm) return "La forme juridique est requise";
+          if (!formData.sectorId) return "Le secteur d'activité est requis";
+        } else {
+          if (!formData.firstName.trim()) return "Le prénom est requis";
+          if (!formData.lastName.trim()) return "Le nom est requis";
+          if (!formData.dateOfBirth) return "La date de naissance est requise";
+        }
+        return null;
+      case 2:
+        if (!formData.email.trim()) return "L'email est requis";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return "L'email n'est pas valide";
+        if (!formData.phone.trim()) return "Le téléphone est requis";
+        if (!formData.password) return "Le mot de passe est requis";
+        if (formData.password.length < 8) return "Le mot de passe doit contenir au moins 8 caractères";
+        if (formData.password !== formData.confirmPassword) return "Les mots de passe ne correspondent pas";
+        return null;
+      case 3:
+        if (!formData.countryIsoCode) return "Le pays est requis";
+        if (!formData.city.trim()) return "La ville est requise";
+        if (!formData.address.trim()) return "L'adresse est requise";
+        return null;
+      case 4:
+        // Étape 4 : pas de champs obligatoires bloquants pour Business
+        // Pour Investor, occupation et incomeBracket sont pré-remplis
+        return null;
+      default:
+        return null;
     }
   };
 
   const handleNext = () => {
     if (currentStep < 4) {
+      setLocalError('');
+      const error = validateStep(currentStep);
+      if (error) {
+        setLocalError(error);
+        return;
+      }
       setCurrentStep(currentStep + 1);
     }
   };
 
   const handlePrev = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+    if (currentStep > 1) {
+      setLocalError('');
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // IMPORTANT: Bloquer la soumission si on n'est pas à l'étape 4
     if (currentStep < 4) {
-      console.log('Tentative de soumission bloquée - Étape', currentStep);
-      return; // Ne rien faire si pas à l'étape 4
+      return;
     }
-    
+
     clearAuthError();
     setLocalError('');
 
-    // Validation du mot de passe
-    if (formData.password !== formData.confirmPassword) {
-      setLocalError('Les mots de passe ne correspondent pas');
-      setCurrentStep(2);
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      setLocalError('Le mot de passe doit contenir au moins 8 caractères');
-      setCurrentStep(2);
-      return;
+    // Validation de TOUTES les étapes avant soumission
+    for (let step = 1; step <= 4; step++) {
+      const error = validateStep(step);
+      if (error) {
+        setLocalError(error);
+        setCurrentStep(step);
+        return;
+      }
     }
 
     try {
