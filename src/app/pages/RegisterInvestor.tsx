@@ -222,9 +222,10 @@ export function RegisterInvestor() {
       }
       // Redirection vers la page OTP après inscription réussie
       navigate('/verify-otp', { state: { email: formData.email } });
-    } catch {
-      // L'erreur est déjà gérée dans le store
-      console.error('Erreur lors de l\'inscription');
+    } catch (err: unknown) {
+      // L'erreur est déjà gérée dans le store, on log le détail pour debug
+      const fetchErr = err as { data?: { detail?: string; message?: string; status?: number }; status?: number; message?: string };
+      console.error('Erreur inscription:', fetchErr?.data || fetchErr?.message || err);
     }
   };
 

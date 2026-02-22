@@ -40,20 +40,20 @@ const httpClient = ofetch.create({
             '/auth-service/api/auth/register',
             '/auth-service/api/auth/login',
             '/auth-service/api/otp/',
+            '/auth-service/api/auth/forgot-password',
             '/campaign-service/api/v1/campaigns/approved',
             '/campaign-service/api/v1/categories',
         ];
 
         // Vérifier si l'endpoint est public
-        // On utilise une vérification précise : l'URL doit contenir l'endpoint
-        // suivi de la fin, d'un '?' (query params), ou rien d'autre dans le path
+        // On utilise startsWith pour supporter les sous-chemins comme /register/investor, /register/business
         const requestUrl = String(request);
         const isPublicEndpoint = publicEndpoints.some(endpoint => {
             const idx = requestUrl.indexOf(endpoint);
             if (idx === -1) return false;
             const after = requestUrl[idx + endpoint.length];
-            // Public si l'endpoint est en fin d'URL, suivi de '?' ou rien
-            return after === undefined || after === '?' || after === '#';
+            // Public si l'endpoint est en fin d'URL, suivi de '?', '#', '/' (sous-chemin), ou rien
+            return after === undefined || after === '?' || after === '#' || after === '/';
         });
         
         // Ajouter le token seulement si ce n'est pas un endpoint public
